@@ -8,8 +8,10 @@ import { z } from "zod";
 import {
   parseJsonLine,
   readFirstJsonlLine,
+  readHeadJsonlLines,
   readJsonlLineAt,
   readJsonlLines,
+  readJsonlLinesAt,
   readLastJsonlLine,
 } from "../jsonl";
 
@@ -63,5 +65,23 @@ describe("jsonl", () => {
       lines.push(line);
     }
     expect(lines).toEqual(["first", "middle", "last"]);
+  });
+
+  it("should stop after the requested number of lines when reading a file head", async () => {
+    const path = await writeTempFile("first\nmiddle\nlast\n");
+    const lines: string[] = [];
+    for await (const line of readHeadJsonlLines(path, 2)) {
+      lines.push(line);
+    }
+    expect(lines).toEqual(["first", "middle"]);
+  });
+
+  it("should return only the requested lines when reading several line numbers", async () => {
+    const path = await writeTempFile("one\ntwo\nthree\nfour\n");
+    const lines = await readJsonlLinesAt(path, [2, 4, 9]);
+    expect([...lines.entries()]).toEqual([
+      [2, "two"],
+      [4, "four"],
+    ]);
   });
 });

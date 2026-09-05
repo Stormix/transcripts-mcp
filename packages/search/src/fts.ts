@@ -17,7 +17,8 @@ import {
   embedQuery,
   ensureSemanticSchema,
   fuseHits,
-  isSemanticReady,
+  hasEmbeddings,
+  loadSqliteVec,
   searchVectors,
 } from "./semantic.ts";
 
@@ -71,6 +72,7 @@ export interface BuildIndexResult {
 
 export class TranscriptIndex {
   readonly #db: Database;
+  #sqliteVecLoaded: boolean | undefined;
 
   constructor(dbPath = defaultIndexPath()) {
     this.#db = new Database(dbPath, { create: true });
@@ -80,6 +82,10 @@ export class TranscriptIndex {
 
   close(): void {
     this.#db.close();
+  }
+
+  semanticAvailable(): boolean {
+    return hasEmbeddings(this.#db);
   }
 
   async build(
@@ -134,12 +140,11 @@ export class TranscriptIndex {
       if (!seen.has(path)) this.#deleteFile(path);
     }
 
-    let semanticReady = false;
     if (resolved.semantic) {
-      semanticReady = await embedCorpus(this.#db);
+      await embedCorpus(this.#db);
     }
 
-    return { files, messages, skipped, semantic: semanticReady };
+    return { files, messages, skipped, semantic: this.semanticAvailable() };
   }
 
   search(query: SearchQuery): SearchHit[] {
@@ -149,10 +154,17 @@ export class TranscriptIndex {
   async searchHybrid(query: SearchQuery): Promise<SearchHit[]> {
     const limit = query.limit ?? 20;
     const ftsHits = this.#searchFts(query, limit);
-    if (!isSemanticReady()) return ftsHits;
+    if (!this.semanticAvailable()) return ftsHits;
     const embedding = await embedQuery(query.query);
     if (embedding === undefined) return ftsHits;
-    return fuseHits(ftsHits, searchVectors(this.#db, embedding, query, limit), limit);
+    const useSqliteVec = await this.#ensureSqliteVec();
+    return fuseHits(ftsHits, searchVectors(this.#db, embedding, query, limit, useSqliteVec), limit);
+  }
+
+  async #ensureSqliteVec(): Promise<boolean> {
+    if (this.#sqliteVecLoaded !== undefined) return this.#sqliteVecLoaded;
+    this.#sqliteVecLoaded = await loadSqliteVec(this.#db);
+    return this.#sqliteVecLoaded;
   }
 
   #searchFts(query: SearchQuery, limit: number): SearchHit[] {

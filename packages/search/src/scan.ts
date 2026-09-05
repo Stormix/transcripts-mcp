@@ -7,33 +7,25 @@ import { createInterface } from "node:readline";
 
 import { walkGlob } from "@transcripts-mcp/core";
 
-import { normalizeHits } from "./normalize.ts";
+import { normalizeCandidates } from "./normalize.ts";
 import { selectedAdapters } from "./select.ts";
 
 export async function scanGrep(registry: AdapterRegistry, query: GrepQuery): Promise<GrepHit[]> {
   const limit = query.limit ?? 50;
-  const candidates = await collectScanCandidates(registry, query, limit * 4);
-  return normalizeHits(registry, candidates, limit);
+  return normalizeCandidates(registry, streamScanCandidates(registry, query), limit);
 }
 
-export async function collectScanCandidates(
+export async function* streamScanCandidates(
   registry: AdapterRegistry,
   query: GrepQuery,
-  cap: number,
-): Promise<CandidateHit[]> {
+): AsyncIterable<CandidateHit> {
   const mode = query.mode ?? "plain";
-  const adapters = selectedAdapters(registry, query.provider);
-  const candidates: CandidateHit[] = [];
-
-  for (const adapter of adapters) {
+  for (const adapter of selectedAdapters(registry, query.provider)) {
     if (!(await adapter.isAvailable())) continue;
     for await (const filePath of walkGlob(adapter.root(), adapter.sessionFiles)) {
-      if (candidates.length >= cap) return candidates;
-      await collectFileHits(filePath, query.query, mode, candidates, cap);
+      yield* streamFileHits(filePath, query.query, mode);
     }
   }
-
-  return candidates;
 }
 
 export function lineMatches(line: string, query: string, mode: GrepMode): boolean {
@@ -60,13 +52,11 @@ function fuzzyIncludes(haystack: string, needle: string): boolean {
   return needle.length > 0;
 }
 
-async function collectFileHits(
+async function* streamFileHits(
   filePath: string,
   query: string,
   mode: GrepMode,
-  candidates: CandidateHit[],
-  cap: number,
-): Promise<void> {
+): AsyncIterable<CandidateHit> {
   const stream = createReadStream(filePath, { encoding: "utf8" });
   const lines = createInterface({ input: stream, crlfDelay: Infinity });
   let lineNumber = 0;
@@ -74,8 +64,7 @@ async function collectFileHits(
     for await (const line of lines) {
       lineNumber += 1;
       if (!lineMatches(line, query, mode)) continue;
-      candidates.push({ path: filePath, lineNumber });
-      if (candidates.length >= cap) return;
+      yield { path: filePath, lineNumber };
     }
   } finally {
     lines.close();

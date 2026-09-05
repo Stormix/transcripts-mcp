@@ -21,6 +21,24 @@ describe("defineJsonlAdapter", () => {
     return dir;
   }
 
+  async function writeEnvelopeSession(root: string, id: string): Promise<void> {
+    await writeFile(
+      join(root, `${id}.jsonl`),
+      `${[
+        JSON.stringify({ type: "queue-operation" }),
+        JSON.stringify({
+          type: "msg",
+          text: "hello",
+          role: "user",
+          title: "Hello",
+          cwd: "/tmp/demo",
+          timestamp: "2026-08-16T15:16:16.745Z",
+        }),
+        JSON.stringify({ type: "attachment" }),
+      ].join("\n")}\n`,
+    );
+  }
+
   it("should skip unrecognized lines when safeParse fails", async () => {
     const adapter = createTestAdapter(fixturesDir);
     const session = await adapter.readSession({
@@ -106,6 +124,33 @@ describe("defineJsonlAdapter", () => {
       { id: "newest", title: "Newest", messageCount: 0 },
       { id: "middle", title: "Middle", messageCount: 0 },
     ]);
+  });
+
+  it("should resolve cwd from a later line when the first line is an envelope", async () => {
+    const root = await createTempDir();
+    await writeEnvelopeSession(root, "envelope");
+    const adapter = createTestAdapter(root);
+    const summaries: Array<{ id: string; cwd?: string; title?: string }> = [];
+    for await (const summary of adapter.listSessions({ cwd: "/tmp/demo" })) {
+      summaries.push({ id: summary.id, cwd: summary.cwd, title: summary.title });
+    }
+    expect(summaries).toEqual([{ id: "envelope", cwd: "/tmp/demo", title: "Hello" }]);
+  });
+
+  it("should agree between listSessions and readSession on cwd and startedAt", async () => {
+    const root = await createTempDir();
+    await writeEnvelopeSession(root, "envelope");
+    const adapter = createTestAdapter(root);
+    const summaries: Array<{ cwd?: string; startedAt?: Date }> = [];
+    for await (const summary of adapter.listSessions({})) {
+      summaries.push({ cwd: summary.cwd, startedAt: summary.startedAt });
+    }
+    const session = await adapter.readSession({ provider: "test", id: "envelope" });
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]?.cwd).toBe(session.cwd);
+    expect(summaries[0]?.startedAt).toEqual(session.startedAt);
+    expect(session.cwd).toBe("/tmp/demo");
+    expect(session.startedAt?.toISOString()).toBe("2026-08-16T15:16:16.745Z");
   });
 
   it("should return null from parseRawLine when the line is not a message", () => {

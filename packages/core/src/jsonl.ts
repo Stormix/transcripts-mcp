@@ -44,13 +44,39 @@ export async function* readJsonlLines(path: string): AsyncIterable<string> {
 }
 
 export async function readJsonlLineAt(path: string, lineNumber: number): Promise<string | null> {
-  if (lineNumber < 1) return null;
+  const lines = await readJsonlLinesAt(path, [lineNumber]);
+  return lines.get(lineNumber) ?? null;
+}
+
+export async function readJsonlLinesAt(
+  path: string,
+  lineNumbers: readonly number[],
+): Promise<Map<number, string>> {
+  const wanted = new Set<number>();
+  for (const lineNumber of lineNumbers) {
+    if (lineNumber >= 1) wanted.add(lineNumber);
+  }
+  const found = new Map<number, string>();
+  if (wanted.size === 0) return found;
+
   let current = 0;
   for await (const line of readJsonlLines(path)) {
     current += 1;
-    if (current === lineNumber) return line;
+    if (!wanted.has(current)) continue;
+    found.set(current, line);
+    if (found.size === wanted.size) return found;
   }
-  return null;
+  return found;
+}
+
+export async function* readHeadJsonlLines(path: string, maxLines: number): AsyncIterable<string> {
+  if (maxLines < 1) return;
+  let yielded = 0;
+  for await (const line of readJsonlLines(path)) {
+    yield line;
+    yielded += 1;
+    if (yielded >= maxLines) return;
+  }
 }
 
 export async function readFirstJsonlLine(path: string): Promise<string | null> {

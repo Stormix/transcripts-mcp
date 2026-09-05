@@ -49,17 +49,16 @@ interface SemanticEngine {
   tryLoadSqliteVec(db: Database): boolean;
 }
 
-let ready = false;
-let sqliteVecReady = false;
 let engine: SemanticEngine | undefined;
 let engineFailed = false;
 
-export function isSemanticReady(): boolean {
-  return ready;
-}
-
 export function ensureSemanticSchema(db: Database): void {
   db.exec(vectorTable);
+}
+
+export function hasEmbeddings(db: Database): boolean {
+  const existing = db.query("SELECT 1 FROM embeddings LIMIT 1").get();
+  return existing !== null && existing !== undefined;
 }
 
 export function deleteEmbeddings(db: Database, path: string): void {
@@ -72,13 +71,20 @@ export async function embedQuery(query: string): Promise<Float32Array | undefine
   return loaded.embedText(query);
 }
 
+export async function loadSqliteVec(db: Database): Promise<boolean> {
+  const loaded = await loadEngine();
+  if (loaded === undefined) return false;
+  return loaded.tryLoadSqliteVec(db);
+}
+
 export function searchVectors(
   db: Database,
   queryVector: Float32Array,
   query: SearchQuery,
   limit: number,
+  useSqliteVec: boolean,
 ): SearchHit[] {
-  if (sqliteVecReady) {
+  if (useSqliteVec) {
     const vecHits = searchWithSqliteVec(db, queryVector, query, limit);
     if (vecHits !== undefined) return vecHits;
   }
@@ -110,11 +116,7 @@ export function fuseHits(
 
 export async function embedCorpus(db: Database): Promise<boolean> {
   const loaded = await loadEngine();
-  if (loaded === undefined) {
-    ready = false;
-    return false;
-  }
-  sqliteVecReady = loaded.tryLoadSqliteVec(db);
+  if (loaded === undefined) return hasEmbeddings(db);
 
   const pending = db
     .query(
@@ -133,15 +135,11 @@ export async function embedCorpus(db: Database): Promise<boolean> {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
-  let embedded = 0;
   for (const row of pending) {
     const parsed = pendingRowSchema.safeParse(row);
     if (!parsed.success) continue;
     const vector = await loaded.embedText(parsed.data.text);
-    if (vector === undefined) {
-      ready = embedded > 0;
-      return ready;
-    }
+    if (vector === undefined) return hasEmbeddings(db);
     insert.run(
       parsed.data.path,
       parsed.data.line_number,
@@ -153,12 +151,9 @@ export async function embedCorpus(db: Database): Promise<boolean> {
       parsed.data.timestamp,
       new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
     );
-    embedded += 1;
   }
 
-  const existing = db.query("SELECT 1 FROM embeddings LIMIT 1").get();
-  ready = existing !== null && existing !== undefined;
-  return ready;
+  return hasEmbeddings(db);
 }
 
 async function loadEngine(): Promise<SemanticEngine | undefined> {
@@ -223,7 +218,6 @@ function searchWithSqliteVec(
     return hits;
   } catch (error) {
     console.error("sqlite-vec query failed; using cosine fallback", error);
-    sqliteVecReady = false;
     return undefined;
   }
 }

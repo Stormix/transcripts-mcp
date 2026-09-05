@@ -32,8 +32,10 @@ export { globMatches, matchSegment, walkGlob } from "./glob";
 export {
   parseJsonLine,
   readFirstJsonlLine,
+  readHeadJsonlLines,
   readJsonlLineAt,
   readJsonlLines,
+  readJsonlLinesAt,
   readLastJsonlLine,
 } from "./jsonl";
 export type { ParseJsonLineResult } from "./jsonl";

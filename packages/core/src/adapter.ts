@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import { walkGlob } from "./glob";
 import {
   parseJsonLine,
-  readFirstJsonlLine,
+  readHeadJsonlLines,
   readJsonlLines,
   readLastJsonlLine,
   type ParseJsonLineResult,
@@ -214,6 +214,8 @@ async function collectSessionFiles(root: string, pattern: string): Promise<Sessi
   return files;
 }
 
+const summaryHeadLines = 64;
+
 async function summarizeSession<TLine>(
   spec: JsonlAdapterSpec<TLine>,
   file: SessionFile,
@@ -224,22 +226,36 @@ async function summarizeSession<TLine>(
     timestamp: Date | undefined;
   },
 ): Promise<SessionSummary> {
-  const first = await readFirstJsonlLine(file.path);
+  const wantsTitle = spec.titleFromLine !== undefined;
+  const wantsCwd = spec.cwdFromLine !== undefined;
+  let title: string | undefined;
+  let cwd: string | undefined;
+  let startedAt: Date | undefined;
+  let latestHeadTimestamp: Date | undefined;
+
+  for await (const text of readHeadJsonlLines(file.path, summaryHeadLines)) {
+    const meta = metadataFromParsed(text, parseLine, metadataFromLine);
+    if (meta === undefined) continue;
+    title ??= meta.title;
+    cwd ??= meta.cwd;
+    startedAt ??= meta.timestamp;
+    if (meta.timestamp !== undefined) latestHeadTimestamp = meta.timestamp;
+    const titleDone = !wantsTitle || title !== undefined;
+    const cwdDone = !wantsCwd || cwd !== undefined;
+    if (titleDone && cwdDone && startedAt !== undefined) break;
+  }
+
   const last = await readLastJsonlLine(file.path);
-  const firstMeta =
-    first === null ? undefined : metadataFromParsed(first, parseLine, metadataFromLine);
   const lastMeta =
-    last === null || last === first
-      ? firstMeta
-      : metadataFromParsed(last, parseLine, metadataFromLine);
+    last === null ? undefined : metadataFromParsed(last, parseLine, metadataFromLine);
 
   return {
     id: spec.sessionIdFromPath(file.path),
     provider: spec.id,
-    title: firstMeta?.title ?? lastMeta?.title,
-    cwd: firstMeta?.cwd ?? lastMeta?.cwd,
-    startedAt: firstMeta?.timestamp,
-    endedAt: lastMeta?.timestamp ?? firstMeta?.timestamp,
+    title: title ?? lastMeta?.title,
+    cwd: cwd ?? lastMeta?.cwd,
+    startedAt,
+    endedAt: lastMeta?.timestamp ?? latestHeadTimestamp,
     messageCount: 0,
     parseErrors: 0,
     path: file.path,

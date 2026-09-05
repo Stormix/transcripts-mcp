@@ -46,4 +46,13 @@ describe("claude-code adapter", () => {
     expect(session.cwd).toBe("/tmp/demo");
     expect(session.parseErrors).toBe(0);
   });
+
+  it("should list the session when filtering by a cwd that only appears on a later line", async () => {
+    const adapter = createClaudeCodeAdapter(fixtureRoot);
+    const sessions: Array<{ id: string; cwd?: string }> = [];
+    for await (const summary of adapter.listSessions({ cwd: "/tmp/demo" })) {
+      sessions.push({ id: summary.id, cwd: summary.cwd });
+    }
+    expect(sessions).toEqual([{ id: sessionId, cwd: "/tmp/demo" }]);
+  });
 });

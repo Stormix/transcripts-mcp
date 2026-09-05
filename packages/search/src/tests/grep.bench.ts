@@ -4,8 +4,8 @@ import type { CandidateHit } from "../types.ts";
 
 import { afterAll, beforeAll, test } from "vitest";
 
-import { normalizeHits } from "../normalize.ts";
-import { collectScanCandidates, scanGrep } from "../scan.ts";
+import { normalizeCandidates } from "../normalize.ts";
+import { scanGrep, streamScanCandidates } from "../scan.ts";
 import {
   createFixtureRegistry,
   createFixtureRoot,
@@ -33,11 +33,14 @@ beforeAll(async () => {
   root = await createFixtureRoot();
   await writeBulkSessions(root, SESSION_COUNT, LINES_PER_SESSION);
   registry = createFixtureRegistry(root);
-  candidates = await collectScanCandidates(
-    registry,
-    { query: "target", mode: "plain" },
-    CANDIDATE_CAP,
-  );
+  candidates = [];
+  for await (const candidate of streamScanCandidates(registry, {
+    query: "target",
+    mode: "plain",
+  })) {
+    candidates.push(candidate);
+    if (candidates.length >= CANDIDATE_CAP) break;
+  }
 });
 
 afterAll(async () => {
@@ -68,10 +71,14 @@ test("scanGrep fuzzy", async ({ bench }) => {
   }).run();
 });
 
-test("normalizeHits", async ({ bench }) => {
+test("normalizeCandidates", async ({ bench }) => {
   const activeRegistry = requireRegistry();
-  await bench("normalizeHits", async () => {
-    const hits = await normalizeHits(activeRegistry, candidates, HIT_LIMIT);
+  await bench("normalizeCandidates", async () => {
+    const hits = await normalizeCandidates(activeRegistry, iterate(candidates), HIT_LIMIT);
     if (hits.length === 0) throw new Error("expected normalized hits");
   }).run();
 });
+
+async function* iterate(items: readonly CandidateHit[]): AsyncIterable<CandidateHit> {
+  for (const item of items) yield item;
+}

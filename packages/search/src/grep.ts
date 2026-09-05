@@ -1,4 +1,4 @@
-import type { FileFinder } from "@ff-labs/fff-bun";
+import type { FileFinder, GrepCursor } from "@ff-labs/fff-bun";
 
 import type { AdapterRegistry, TranscriptAdapter } from "@transcripts-mcp/core";
 
@@ -7,8 +7,8 @@ import type { CandidateHit, GrepHit, GrepQuery } from "./types.ts";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { normalizeHits } from "./normalize.ts";
-import { collectScanCandidates, scanGrep } from "./scan.ts";
+import { candidateWindow, normalizeCandidates } from "./normalize.ts";
+import { scanGrep, streamScanCandidates } from "./scan.ts";
 import { selectedAdapters } from "./select.ts";
 
 const maxFileSizeBytes = 10 * 1024 * 1024;
@@ -33,46 +33,50 @@ export async function grepTranscripts(
   if (Finder === undefined) return scanGrep(registry, query);
 
   const limit = query.limit ?? 50;
-  const mode = query.mode ?? "plain";
-  const candidates: CandidateHit[] = [];
+  return normalizeCandidates(registry, streamNativeCandidates(registry, query, Finder), limit);
+}
 
+async function* streamNativeCandidates(
+  registry: AdapterRegistry,
+  query: GrepQuery,
+  Finder: FileFinderClass,
+): AsyncIterable<CandidateHit> {
+  const mode = query.mode ?? "plain";
   for (const adapter of selectedAdapters(registry, query.provider)) {
     if (!(await adapter.isAvailable())) continue;
     const finder = await finderFor(adapter, Finder);
     if (finder === undefined) {
-      const fallback = await collectScanCandidates(
-        registry,
-        {
-          query: query.query,
-          mode: query.mode,
-          provider: adapter.id,
-          limit,
-        },
-        limit * 4,
-      );
-      candidates.push(...fallback);
+      yield* streamScanCandidates(registry, {
+        query: query.query,
+        mode: query.mode,
+        provider: adapter.id,
+      });
       continue;
     }
 
-    const result = finder.grep(query.query, {
-      mode,
-      smartCase: true,
-      maxFileSize: maxFileSizeBytes,
-      pageSize: limit * 4,
-      beforeContext: 0,
-      afterContext: 0,
-    });
-    if (!result.ok) continue;
-    for (const item of result.value.items) {
-      candidates.push({
-        path: join(adapter.root(), item.relativePath),
-        lineNumber: item.lineNumber,
-        score: item.fuzzyScore,
+    let cursor: GrepCursor | null = null;
+    for (;;) {
+      const result = finder.grep(query.query, {
+        mode,
+        smartCase: true,
+        maxFileSize: maxFileSizeBytes,
+        pageSize: candidateWindow,
+        beforeContext: 0,
+        afterContext: 0,
+        cursor,
       });
+      if (!result.ok) break;
+      for (const item of result.value.items) {
+        yield {
+          path: join(adapter.root(), item.relativePath),
+          lineNumber: item.lineNumber,
+          score: item.fuzzyScore,
+        };
+      }
+      if (result.value.nextCursor === null) break;
+      cursor = result.value.nextCursor;
     }
   }
-
-  return normalizeHits(registry, candidates, limit);
 }
 
 async function finderFor(
