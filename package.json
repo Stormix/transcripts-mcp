@@ -17,8 +17,7 @@
     "format:check": "oxfmt --check .",
     "upgrade:deps": "pnpm dlx taze major -r -w",
     "changeset": "changeset",
-    "start": "pnpm --filter @transcripts-mcp/mcp start",
-    "preinstall": "node scripts/preinstall.ts"
+    "start": "pnpm --filter @transcripts-mcp/mcp start"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
