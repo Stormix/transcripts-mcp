@@ -135,9 +135,9 @@ const homeSeo: PageSeo = {
         "@type": "HowTo",
         name: "Search agent session transcripts with transcripts-mcp",
         description: siteDescription,
-        step: howItWorks.map((step) => ({
+        step: howItWorks.map((step, index) => ({
           "@type": "HowToStep",
-          position: Number(step.index),
+          position: index + 1,
           name: step.title,
           text: step.body,
         })),

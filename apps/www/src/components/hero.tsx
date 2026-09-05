@@ -1,3 +1,4 @@
+import { cursorInstallUrl } from "@/lib/install";
 import { launchCommand } from "@/lib/site";
 import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import { ArrowRight } from "lucide-react";
@@ -31,12 +32,20 @@ export function Hero() {
               <CopyButton value={launchCommand} iconClassName="size-[15px]" />
             </div>
             <a
+              href={cursorInstallUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-[7px] rounded-[9px] px-4 py-[13px] font-body text-sm font-medium text-paper"
+            >
+              Add to Cursor
+              <ArrowRight className="size-[15px]" />
+            </a>
+            <a
               href="#configure"
               onClick={(event) => scrollToHash(event, "#configure")}
-              className="flex items-center gap-[7px] px-4 py-[13px] font-body text-sm font-medium text-paper"
+              className="flex items-center gap-[7px] px-4 py-[13px] font-body text-sm font-medium text-soft hover:text-paper"
             >
-              Configure your client
-              <ArrowRight className="size-[15px]" />
+              Other clients
             </a>
           </div>
         </div>

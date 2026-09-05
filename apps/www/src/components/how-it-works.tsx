@@ -1,32 +1,44 @@
 import { howItWorks } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 import { Container } from "./container";
+import { ProviderMarks } from "./provider-icon";
 
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-ink">
       <Container className="flex flex-col gap-[60px] py-[100px]">
-        <div className="flex max-w-[620px] flex-col gap-[18px]">
-          <h2 className="max-w-[520px] font-display text-[42px] leading-[1.1] font-semibold tracking-[-0.03em] text-paper">
-            How a question becomes a result.
+        <div className="flex flex-col gap-[18px]">
+          <h2 className="max-w-[35ch] font-display text-[42px] leading-[1.1] font-semibold tracking-[-0.03em] text-balance text-paper">
+            The current session can find a past session.
           </h2>
-          <p className="font-body text-base leading-relaxed text-soft">
-            Configure the client once. Everything after that happens inside the session you are
-            already in.
+          <p className="max-w-[56ch] font-body text-base leading-relaxed text-pretty text-soft">
+            Configure the client once. List, open, and search stay inside the chat you are already
+            in.
           </p>
         </div>
-        <div className="grid gap-0 md:grid-cols-4">
-          {howItWorks.map((step) => (
+        <dl className="grid grid-cols-1 border-t border-line-soft md:grid-cols-2">
+          {howItWorks.map((feature, index) => (
             <div
-              key={step.index}
-              className="flex flex-col gap-3.5 border-line-soft pt-[26px] pr-8 pb-0 pl-0 md:border-l md:pl-8 md:first:border-l-0 md:first:pl-0"
+              key={feature.title}
+              className={cn(
+                "flex flex-col gap-3.5 border-line-soft py-10",
+                "not-first:border-t md:nth-2:border-t-0 md:nth-[n+3]:border-t",
+                "md:odd:pr-12 md:even:border-l md:even:pl-12",
+              )}
             >
-              <span className="font-mono text-xs font-medium text-coral">{step.index}</span>
-              <h3 className="font-display text-[22px] font-semibold text-paper">{step.title}</h3>
-              <p className="font-body text-[14.5px] leading-relaxed text-soft">{step.body}</p>
+              {index === 0 ? (
+                <ProviderMarks className="text-paper" iconClassName="size-[15px]" />
+              ) : null}
+              <dt className="font-display text-[22px] font-semibold text-balance text-paper">
+                {feature.title}
+              </dt>
+              <dd className="font-body text-base leading-relaxed text-pretty text-soft sm:text-[14.5px]">
+                {feature.body}
+              </dd>
             </div>
           ))}
-        </div>
+        </dl>
       </Container>
     </section>
   );

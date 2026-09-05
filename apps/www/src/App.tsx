@@ -7,7 +7,6 @@ import { Hero } from "./components/hero";
 import { HowItWorks } from "./components/how-it-works";
 import { Install } from "./components/install";
 import { PrivacyPage } from "./components/privacy-page";
-import { Providers } from "./components/providers";
 import { SearchTiers } from "./components/search-tiers";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
@@ -78,7 +77,6 @@ function Home() {
   return (
     <>
       <Hero />
-      <Providers />
       <HowItWorks />
       <SearchTiers />
       <ToolsTable />

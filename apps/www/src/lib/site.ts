@@ -26,22 +26,18 @@ export const clients: readonly ClientConfig[] = [
 
 export const howItWorks = [
   {
-    index: "01",
     title: "The files are already there",
-    body: "Cursor, Claude Code, and Codex append JSONL as you work. Nothing extra to export.",
+    body: "Cursor, Claude Code, and Codex append JSONL as you work. This server reads those files. Nothing extra to export.",
   },
   {
-    index: "02",
-    title: "Point a client at the server",
-    body: "Paste the launch command into the client's MCP config and restart. Same command in all three.",
+    title: "Same command in every client",
+    body: "Paste the launch command into the MCP config and restart. Cursor, Claude Code, and Codex all take the same one.",
   },
   {
-    index: "03",
     title: "One shape for three formats",
     body: "Each tool writes a different JSONL. Adapters turn that into role, text, timestamp, and cwd.",
   },
   {
-    index: "04",
     title: "Grep now, rank later",
     body: "grep_transcripts scans the files immediately. search_transcripts ranks over an index you build once.",
   },
@@ -223,7 +219,7 @@ export const faqItems = [
   {
     question: "How do I install it?",
     answer:
-      "Put npx -y transcripts-mcp in the client's MCP config and restart. Cursor also has a plugin under Customize.",
+      "On the site, Cursor and VS Code are one-click install links. Claude Code, Gemini, and Codex copy a CLI command. Claude Desktop, Windsurf, and Manual copy the mcpServers JSON. ChatGPT connectors need a remote HTTPS URL, which this local stdio server does not have. Cursor also has a plugin under Customize.",
   },
   {
     question: "Can I change the paths?",

@@ -1,77 +1,62 @@
-import { clients, packageName, type ClientConfig, type ClientId } from "@/lib/site";
-import { Braces, ChevronsRight } from "lucide-react";
+import {
+  installClientById,
+  installClients,
+  type InstallClient,
+  type InstallClientId,
+  type SnippetKind,
+} from "@/lib/install";
+import { packageName } from "@/lib/site";
+import { Braces, Check, ChevronRight, Terminal } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Container } from "./container";
 import { CopyButton } from "./copy-button";
-import { ProviderIcon } from "./provider-icon";
+import { InstallClientIcon } from "./install-client-icon";
 
 export function Install() {
-  const [selected, setSelected] = useState<ClientId>("cursor");
-  const active = clientById(selected);
-  const snippet = snippetFor(selected);
+  const [selected, setSelected] = useState<InstallClientId>("cursor");
+  const [copiedId, setCopiedId] = useState<InstallClientId | null>(null);
+  const active = installClientById(selected);
 
   return (
     <section id="configure" className="bg-ink-sunken">
       <Container className="flex flex-col gap-[72px] py-[100px] lg:flex-row">
         <div className="flex w-full max-w-[520px] flex-col gap-5">
           <h2 className="font-display text-[42px] leading-[1.1] font-semibold tracking-[-0.03em] text-paper">
-            The same command in three config files.
+            Add it to a client.
           </h2>
           <p className="max-w-[460px] font-body text-base leading-relaxed text-soft">
-            Paste the block into the client's config and restart it. npx fetches the package on the
-            first run.
+            Cursor and VS Code open an install prompt. Everyone else copies a command or a config
+            block. npx fetches the package on the first run.
           </p>
           <div className="flex flex-col pt-4">
-            {clients.map((client) => {
-              const isActive = client.id === selected;
-              return (
-                <button
-                  key={client.id}
-                  type="button"
-                  onClick={() => setSelected(client.id)}
-                  className="flex cursor-pointer items-center gap-3 border-b border-line-soft py-[15px] text-left last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-sunken"
-                >
-                  <ProviderIcon
-                    id={client.id}
-                    className={isActive ? "size-[15px] text-paper" : "size-[15px] text-faint"}
-                  />
-                  <span
-                    className={
-                      isActive
-                        ? "font-body text-[15px] font-medium text-paper"
-                        : "font-body text-[15px] text-soft"
-                    }
-                  >
-                    {client.name}
-                  </span>
-                  <span className="ml-auto font-mono text-xs text-faint">{client.path}</span>
-                </button>
-              );
-            })}
+            {installClients.map((client) => (
+              <ClientRow
+                key={client.id}
+                client={client}
+                selected={selected}
+                copied={copiedId === client.id}
+                onSelect={setSelected}
+                onCopied={setCopiedId}
+              />
+            ))}
           </div>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           <div className="overflow-hidden rounded-xl bg-ink">
             <div className="flex items-center gap-2.5 px-4 py-3">
-              <Braces className="size-[14px] text-faint" />
-              <span className="flex-1 font-mono text-xs text-soft">{active.path}</span>
-              <CopyButton value={snippet} />
+              {active.snippetKind === "cli" ? (
+                <Terminal className="size-[14px] text-faint" />
+              ) : (
+                <Braces className="size-[14px] text-faint" />
+              )}
+              <span className="flex-1 truncate font-mono text-xs text-soft">{active.path}</span>
+              <CopyButton value={active.copyValue} />
             </div>
             <pre className="overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]">
-              <Snippet clientId={selected} />
+              <Snippet kind={active.snippetKind} value={active.copyValue} />
             </pre>
-          </div>
-          <div className="flex flex-col gap-3.5 rounded-xl px-5 py-5">
-            <div className="flex items-center gap-2">
-              <ChevronsRight className="size-[14px] text-faint" />
-              <span className="font-mono text-[10.5px] font-medium tracking-[0.08em] text-soft">
-                OR FROM THE CLI
-              </span>
-            </div>
-            <CliLine command={`claude mcp add --scope user transcripts -- npx -y ${packageName}`} />
-            <CliLine command={`codex mcp add transcripts -- npx -y ${packageName}`} />
           </div>
         </div>
       </Container>
@@ -79,116 +64,175 @@ export function Install() {
   );
 }
 
-function CliLine({ command }: { command: string }) {
+function ClientRow({
+  client,
+  selected,
+  copied,
+  onSelect,
+  onCopied,
+}: {
+  client: InstallClient;
+  selected: InstallClientId;
+  copied: boolean;
+  onSelect: (id: InstallClientId) => void;
+  onCopied: (id: InstallClientId | null) => void;
+}) {
+  const isActive = client.id === selected;
+  const className =
+    "flex w-full cursor-pointer items-center gap-3 border-b border-line-soft py-[15px] text-left last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-sunken";
+
+  const body = (
+    <>
+      <InstallClientIcon id={client.id} className="size-[15px]" />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span
+          className={
+            isActive
+              ? "font-body text-[15px] font-medium text-paper"
+              : "font-body text-[15px] text-soft"
+          }
+        >
+          {client.name}
+        </span>
+        <span className="font-body text-[12.5px] text-faint">{client.subtitle}</span>
+      </span>
+      {copied ? (
+        <Check className="size-[14px] text-paper" />
+      ) : (
+        <ChevronRight className={isActive ? "size-[14px] text-paper" : "size-[14px] text-faint"} />
+      )}
+    </>
+  );
+
+  if (client.href !== null) {
+    return (
+      <a
+        href={client.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={() => {
+          onSelect(client.id);
+        }}
+      >
+        {body}
+      </a>
+    );
+  }
+
   return (
-    <p className="flex gap-2.5 font-mono text-[12.5px]">
-      <span className="text-coral">$</span>
-      <span className="text-soft">{command}</span>
-    </p>
+    <button
+      type="button"
+      className={className}
+      onClick={() => {
+        onSelect(client.id);
+        void copyText(client.copyValue, client.id, onCopied);
+      }}
+    >
+      {body}
+    </button>
   );
 }
 
-function clientById(id: ClientId): ClientConfig {
-  for (const client of clients) {
-    if (client.id === id) {
-      return client;
-    }
+async function copyText(
+  value: string,
+  id: InstallClientId,
+  onCopied: (id: InstallClientId | null) => void,
+) {
+  try {
+    await navigator.clipboard.writeText(value);
+    onCopied(id);
+    window.setTimeout(() => {
+      onCopied(null);
+    }, 1600);
+  } catch {
+    onCopied(null);
   }
-
-  throw new Error(`Unknown client: ${id}`);
 }
 
-function snippetFor(clientId: ClientId): string {
-  switch (clientId) {
-    case "cursor":
-    case "claude-code":
-      return `{
-  "mcpServers": {
-    "transcripts": {
-      "command": "npx",
-      "args": ["-y", "${packageName}"]
-    }
-  }
-}`;
-    case "codex":
-      return `[mcp_servers.transcripts]
-command = "npx"
-args = ["-y", "${packageName}"]`;
+function Snippet({ kind, value }: { kind: SnippetKind; value: string }) {
+  switch (kind) {
+    case "json":
+      return <JsonSnippet />;
+    case "toml":
+      return <TomlSnippet />;
+    case "cli":
+      return (
+        <code>
+          <span className="text-coral">$</span> <span className="text-soft">{value}</span>
+        </code>
+      );
+    case "note":
+      return <code className="text-soft whitespace-pre-wrap">{value}</code>;
     default: {
-      const exhaustive: never = clientId;
+      const exhaustive: never = kind;
       return exhaustive;
     }
   }
 }
 
-function Snippet({ clientId }: { clientId: ClientId }) {
-  switch (clientId) {
-    case "cursor":
-    case "claude-code":
-      return (
-        <code>
-          <Line>
-            <Dim>{"{"}</Dim>
-          </Line>
-          <Line indent>
-            <Paper>"mcpServers"</Paper>
-            <Dim>{": {"}</Dim>
-          </Line>
-          <Line indent2>
-            <Paper>"transcripts"</Paper>
-            <Dim>{": {"}</Dim>
-          </Line>
-          <Line indent3>
-            <Paper>"command"</Paper>
-            <Dim>: </Dim>
-            <Paper>"npx"</Paper>
-            <Dim>,</Dim>
-          </Line>
-          <Line indent3>
-            <Paper>"args"</Paper>
-            <Dim>{": ["}</Dim>
-            <Paper>"-y"</Paper>
-            <Dim>, </Dim>
-            <Paper>"{packageName}"</Paper>
-            <Dim>]</Dim>
-          </Line>
-          <Line indent2>
-            <Dim>{"}"}</Dim>
-          </Line>
-          <Line indent>
-            <Dim>{"}"}</Dim>
-          </Line>
-          <Line>
-            <Dim>{"}"}</Dim>
-          </Line>
-        </code>
-      );
-    case "codex":
-      return (
-        <code>
-          <Line>
-            <Dim>[mcp_servers.transcripts]</Dim>
-          </Line>
-          <Line>
-            <Paper>command</Paper>
-            <Dim> = </Dim>
-            <Paper>"npx"</Paper>
-          </Line>
-          <Line>
-            <Paper>args</Paper>
-            <Dim> = [</Dim>
-            <Paper>"-y"</Paper>
-            <Dim>, </Dim>
-            <Paper>"{packageName}"</Paper>
-            <Dim>]</Dim>
-          </Line>
-        </code>
-      );
-    default: {
-      const exhaustive: never = clientId;
-      return exhaustive;
-    }
-  }
+function JsonSnippet() {
+  return (
+    <code>
+      <Line>
+        <Dim>{"{"}</Dim>
+      </Line>
+      <Line indent>
+        <Paper>"mcpServers"</Paper>
+        <Dim>{": {"}</Dim>
+      </Line>
+      <Line indent2>
+        <Paper>"transcripts"</Paper>
+        <Dim>{": {"}</Dim>
+      </Line>
+      <Line indent3>
+        <Paper>"command"</Paper>
+        <Dim>: </Dim>
+        <Paper>"npx"</Paper>
+        <Dim>,</Dim>
+      </Line>
+      <Line indent3>
+        <Paper>"args"</Paper>
+        <Dim>{": ["}</Dim>
+        <Paper>"-y"</Paper>
+        <Dim>, </Dim>
+        <Paper>"{packageName}"</Paper>
+        <Dim>]</Dim>
+      </Line>
+      <Line indent2>
+        <Dim>{"}"}</Dim>
+      </Line>
+      <Line indent>
+        <Dim>{"}"}</Dim>
+      </Line>
+      <Line>
+        <Dim>{"}"}</Dim>
+      </Line>
+    </code>
+  );
+}
+
+function TomlSnippet() {
+  return (
+    <code>
+      <Line>
+        <Dim>[mcp_servers.transcripts]</Dim>
+      </Line>
+      <Line>
+        <Paper>command</Paper>
+        <Dim> = </Dim>
+        <Paper>"npx"</Paper>
+      </Line>
+      <Line>
+        <Paper>args</Paper>
+        <Dim> = [</Dim>
+        <Paper>"-y"</Paper>
+        <Dim>, </Dim>
+        <Paper>"{packageName}"</Paper>
+        <Dim>]</Dim>
+      </Line>
+    </code>
+  );
 }
 
 function Line({
