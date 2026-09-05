@@ -14,7 +14,11 @@ export const testLineSchema = z.object({
   timestamp: z.string().optional(),
 });
 
-export function createTestAdapter(root: string, sessionFiles = "*.jsonl") {
+export function createTestAdapter(
+  root: string,
+  sessionFiles = "*.jsonl",
+  options: { projectSlugFromPath?: (path: string) => string | undefined } = {},
+) {
   return defineJsonlAdapter({
     id: "test",
     displayName: "Test",
@@ -34,6 +38,7 @@ export function createTestAdapter(root: string, sessionFiles = "*.jsonl") {
     titleFromLine: (line) => line.title,
     cwdFromLine: (line) => line.cwd,
     timestampFromLine: (line) => dateFromIso(line.timestamp),
+    projectSlugFromPath: options.projectSlugFromPath,
   });
 }
 

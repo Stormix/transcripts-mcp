@@ -61,8 +61,55 @@ export function parseIsoDate(value: string | undefined): Date | undefined {
   return date;
 }
 
+const titleWrapperTags = [
+  "timestamp",
+  "app-context",
+  "environment_context",
+  "skills_instructions",
+  "recommended_plugins",
+  "system_reminder",
+] as const;
+
+function extractTagInner(text: string, tag: string): string | undefined {
+  const open = `<${tag}>`;
+  const close = `</${tag}>`;
+  const start = text.indexOf(open);
+  if (start === -1) return undefined;
+  const innerStart = start + open.length;
+  const end = text.indexOf(close, innerStart);
+  if (end === -1) return undefined;
+  return text.slice(innerStart, end);
+}
+
+function stripPairedTag(text: string, tag: string): string {
+  const open = `<${tag}>`;
+  const close = `</${tag}>`;
+  let result = text;
+  for (;;) {
+    const start = result.indexOf(open);
+    if (start === -1) break;
+    const end = result.indexOf(close, start + open.length);
+    if (end === -1) {
+      result = `${result.slice(0, start)}${result.slice(start + open.length)}`;
+      break;
+    }
+    result = `${result.slice(0, start)}${result.slice(end + close.length)}`;
+  }
+  return result;
+}
+
+export function cleanTitleText(text: string): string {
+  const userQuery = extractTagInner(text, "user_query");
+  if (userQuery !== undefined) return userQuery;
+  let cleaned = text;
+  for (const tag of titleWrapperTags) {
+    cleaned = stripPairedTag(cleaned, tag);
+  }
+  return cleaned.replace(/^(?:\s*<[^>]+>)+/, "");
+}
+
 export function titleFromText(text: string): string | undefined {
-  const compact = text.replace(/\s+/g, " ").trim();
+  const compact = cleanTitleText(text).replace(/\s+/g, " ").trim();
   if (compact.length === 0) return undefined;
   if (compact.length <= 80) return compact;
   return `${compact.slice(0, 77)}...`;

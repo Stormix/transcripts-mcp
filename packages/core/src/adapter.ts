@@ -13,7 +13,7 @@ import {
   readLastJsonlLine,
   type ParseJsonLineResult,
 } from "./jsonl";
-import { isPathInside, normalizeCwd } from "./paths";
+import { isPathInside, matchesCwdFilter } from "./paths";
 
 export interface TranscriptAdapter {
   readonly id: string;
@@ -23,6 +23,7 @@ export interface TranscriptAdapter {
   listSessions(opts: ListOptions): AsyncIterable<SessionSummary>;
   readSession(ref: SessionRef): Promise<Session>;
   parseRawLine(text: string): Message | null;
+  cwdFromRawLine(text: string): string | undefined;
   sessionIdFromPath(path: string): string;
   readonly sessionFiles: string;
 }
@@ -38,6 +39,7 @@ export interface JsonlAdapterSpec<TLine> {
   titleFromLine?: (line: TLine) => string | undefined;
   cwdFromLine?: (line: TLine) => string | undefined;
   timestampFromLine?: (line: TLine) => Date | undefined;
+  projectSlugFromPath?: (path: string) => string | undefined;
 }
 
 interface SessionFile {
@@ -75,6 +77,12 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
         return exhaustive;
       }
     }
+  };
+
+  const cwdFromRawLine = (text: string): string | undefined => {
+    const parsed = parseLine(text);
+    if (!parsed.ok) return undefined;
+    return spec.cwdFromLine?.(parsed.value);
   };
 
   const metadataFromLine = (line: TLine) => {
@@ -169,6 +177,7 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
         provider: spec.id,
         title,
         cwd,
+        projectSlug: spec.projectSlugFromPath?.(filePath),
         startedAt,
         endedAt,
         messageCount: messages.length,
@@ -179,6 +188,7 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
       };
     },
     parseRawLine,
+    cwdFromRawLine,
     sessionIdFromPath: spec.sessionIdFromPath,
     sessionFiles: spec.sessionFiles,
   };
@@ -254,10 +264,9 @@ async function summarizeSession<TLine>(
     provider: spec.id,
     title: title ?? lastMeta?.title,
     cwd: cwd ?? lastMeta?.cwd,
+    projectSlug: spec.projectSlugFromPath?.(file.path),
     startedAt,
     endedAt: lastMeta?.timestamp ?? latestHeadTimestamp,
-    messageCount: 0,
-    parseErrors: 0,
     path: file.path,
     mtime: file.mtime,
   };
@@ -279,8 +288,7 @@ function metadataFromParsed<TLine>(
 
 function matchesListFilters(summary: SessionSummary, opts: ListOptions): boolean {
   if (opts.cwd !== undefined) {
-    if (summary.cwd === undefined) return false;
-    if (normalizeCwd(summary.cwd) !== normalizeCwd(opts.cwd)) return false;
+    if (!matchesCwdFilter(opts.cwd, summary.cwd, summary.projectSlug)) return false;
   }
   const timestamp = summary.startedAt ?? summary.mtime;
   if (opts.since !== undefined && timestamp < opts.since) return false;

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -111,7 +111,7 @@ describe("defineJsonlAdapter", () => {
     await utimes(oldestPath, oldestTime, oldestTime);
 
     const adapter = createTestAdapter(root);
-    const sessions: Array<{ id: string; title?: string; messageCount: number }> = [];
+    const sessions: Array<{ id: string; title?: string; messageCount?: number }> = [];
     for await (const summary of adapter.listSessions({ limit: 2 })) {
       sessions.push({
         id: summary.id,
@@ -121,8 +121,8 @@ describe("defineJsonlAdapter", () => {
     }
 
     expect(sessions).toEqual([
-      { id: "newest", title: "Newest", messageCount: 0 },
-      { id: "middle", title: "Middle", messageCount: 0 },
+      { id: "newest", title: "Newest" },
+      { id: "middle", title: "Middle" },
     ]);
   });
 
@@ -151,6 +151,37 @@ describe("defineJsonlAdapter", () => {
     expect(summaries[0]?.startedAt).toEqual(session.startedAt);
     expect(session.cwd).toBe("/tmp/demo");
     expect(session.startedAt?.toISOString()).toBe("2026-08-16T15:16:16.745Z");
+  });
+
+  it("should list a session when the cwd filter matches a project slug", async () => {
+    const root = await createTempDir();
+    const sessionDir = join(root, "projects", "v-dev-demo", "agent-transcripts", "slug-sess");
+    await mkdir(sessionDir, { recursive: true });
+    await writeFile(
+      join(sessionDir, "slug-sess.jsonl"),
+      `${JSON.stringify({ type: "msg", text: "hello", role: "user", title: "Hello" })}\n`,
+    );
+    const adapter = createTestAdapter(root, "projects/*/agent-transcripts/*/*.jsonl", {
+      projectSlugFromPath: (filePath) => {
+        const parts = filePath.replaceAll("\\", "/").split("/");
+        const projectsAt = parts.lastIndexOf("projects");
+        return parts[projectsAt + 1];
+      },
+    });
+    const sessions: Array<{ id: string; projectSlug?: string }> = [];
+    for await (const summary of adapter.listSessions({ cwd: "V:\\dev\\demo" })) {
+      sessions.push({ id: summary.id, projectSlug: summary.projectSlug });
+    }
+    expect(sessions).toEqual([{ id: "slug-sess", projectSlug: "v-dev-demo" }]);
+  });
+
+  it("should return a cwd from cwdFromRawLine when the line carries one", () => {
+    const adapter = createTestAdapter(fixturesDir);
+    expect(
+      adapter.cwdFromRawLine(`{"type":"msg","text":"hello","role":"user","cwd":"/tmp/demo"}`),
+    ).toBe("/tmp/demo");
+    expect(adapter.cwdFromRawLine(`{"type":"msg","text":"hello","role":"user"}`)).toBeUndefined();
+    expect(adapter.cwdFromRawLine("not json")).toBeUndefined();
   });
 
   it("should return null from parseRawLine when the line is not a message", () => {

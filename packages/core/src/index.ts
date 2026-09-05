@@ -39,4 +39,4 @@ export {
   readLastJsonlLine,
 } from "./jsonl";
 export type { ParseJsonLineResult } from "./jsonl";
-export { isPathInside, normalizeCwd } from "./paths";
+export { isPathInside, matchesCwdFilter, normalizeCwd, slugifyCwd } from "./paths";

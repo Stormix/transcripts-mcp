@@ -10,6 +10,10 @@ const ftsResultSchema = z.object({
   sessionId: z.string(),
   provider: z.string(),
   messages: z.number(),
+  cwdHits: z.number(),
+  slashCwdHits: z.number(),
+  slugHits: z.number(),
+  roleUserHits: z.number(),
 });
 
 describe("fts", () => {
@@ -31,5 +35,11 @@ describe("fts", () => {
     expect(parsed.data.sessionId).toBe("alpha");
     expect(parsed.data.provider).toBe("fixture");
     expect(parsed.data.messages).toBeGreaterThan(0);
+    expect(parsed.data.cwdHits).toBe(1);
+    expect(parsed.data.slugHits).toBe(1);
+    expect(parsed.data.roleUserHits).toBe(1);
+    if (process.platform === "win32") {
+      expect(parsed.data.slashCwdHits).toBe(1);
+    }
   });
 });

@@ -25,6 +25,15 @@ export function cursorToMessage(line: CursorLine): Message | null {
   );
 }
 
+export function cursorProjectSlugFromPath(filePath: string): string | undefined {
+  const parts = filePath.replaceAll("\\", "/").split("/");
+  const projectsAt = parts.lastIndexOf("projects");
+  if (projectsAt === -1) return undefined;
+  const slug = parts[projectsAt + 1];
+  if (slug === undefined || slug.length === 0) return undefined;
+  return slug;
+}
+
 export function createCursorAdapter(rootDir?: string): TranscriptAdapter {
   return defineJsonlAdapter({
     id: "cursor",
@@ -35,6 +44,7 @@ export function createCursorAdapter(rootDir?: string): TranscriptAdapter {
     lineSchema: cursorLineSchema,
     toMessage: cursorToMessage,
     titleFromLine: (line) => titleFromText(joinedText(line.message.content)),
+    projectSlugFromPath: cursorProjectSlugFromPath,
   });
 }
 

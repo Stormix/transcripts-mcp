@@ -9,6 +9,7 @@ import { createRegistry, defineJsonlAdapter } from "@transcripts-mcp/core";
 const lineSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
   text: z.string(),
+  cwd: z.string().optional(),
 });
 
 export function createFixtureAdapter(root: string) {
@@ -20,6 +21,26 @@ export function createFixtureAdapter(root: string) {
     sessionIdFromPath: (filePath) => basename(filePath, ".jsonl"),
     lineSchema,
     toMessage: (line) => ({ role: line.role, text: line.text }),
+    cwdFromLine: (line) => line.cwd,
+  });
+}
+
+export function createSlugFixtureAdapter(root: string) {
+  return defineJsonlAdapter({
+    id: "cursor-like",
+    displayName: "Cursor-like",
+    root: () => root,
+    sessionFiles: "projects/*/agent-transcripts/*/*.jsonl",
+    sessionIdFromPath: (filePath) => basename(filePath, ".jsonl"),
+    lineSchema,
+    toMessage: (line) => ({ role: line.role, text: line.text }),
+    projectSlugFromPath: (filePath) => {
+      const parts = filePath.replaceAll("\\", "/").split("/");
+      const projectsAt = parts.lastIndexOf("projects");
+      if (projectsAt === -1) return undefined;
+      const slug = parts[projectsAt + 1];
+      return slug === undefined || slug.length === 0 ? undefined : slug;
+    },
   });
 }
 
@@ -59,8 +80,25 @@ export async function writeBulkSessions(
   return Promise.all(writes);
 }
 
-export function messageLine(role: "user" | "assistant" | "system", text: string): string {
-  return JSON.stringify({ role, text });
+export function messageLine(
+  role: "user" | "assistant" | "system",
+  text: string,
+  cwd?: string,
+): string {
+  return JSON.stringify(cwd === undefined ? { role, text } : { role, text, cwd });
+}
+
+export async function writeSlugSession(
+  root: string,
+  slug: string,
+  id: string,
+  lines: string[],
+): Promise<string> {
+  const dir = join(root, "projects", slug, "agent-transcripts", id);
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, `${id}.jsonl`);
+  await writeFile(path, `${lines.join("\n")}\n`);
+  return path;
 }
 
 export async function removeFixtureRoot(root: string): Promise<void> {

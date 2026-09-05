@@ -16,10 +16,11 @@ export const sessionSummarySchema = z.object({
   provider: z.string(),
   title: z.string().optional(),
   cwd: z.string().optional(),
+  projectSlug: z.string().optional(),
   startedAt: z.date().optional(),
   endedAt: z.date().optional(),
-  messageCount: z.number().int().nonnegative(),
-  parseErrors: z.number().int().nonnegative(),
+  messageCount: z.number().int().nonnegative().optional(),
+  parseErrors: z.number().int().nonnegative().optional(),
   path: z.string(),
   mtime: z.date(),
 });
@@ -27,6 +28,8 @@ export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 
 export const sessionSchema = sessionSummarySchema.extend({
   messages: z.array(messageSchema),
+  messageCount: z.number().int().nonnegative(),
+  parseErrors: z.number().int().nonnegative(),
 });
 export type Session = z.infer<typeof sessionSchema>;
 

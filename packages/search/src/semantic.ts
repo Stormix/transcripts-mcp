@@ -4,6 +4,8 @@ import type { SearchHit, SearchQuery } from "./types.ts";
 
 import { z } from "zod";
 
+import { matchesCwdFilter } from "@transcripts-mcp/core";
+
 import { reciprocalRankFusion } from "./fusion.ts";
 
 const embeddingRowSchema = z.object({
@@ -14,6 +16,8 @@ const embeddingRowSchema = z.object({
   role: z.string(),
   text: z.string(),
   cwd: z.string().nullable(),
+  cwd_norm: z.string().nullable(),
+  project_slug: z.string().nullable(),
   timestamp: z.string().nullable(),
   vector: z.instanceof(Uint8Array),
 });
@@ -26,6 +30,8 @@ const pendingRowSchema = z.object({
   role: z.string(),
   text: z.string(),
   cwd: z.string().nullable(),
+  cwd_norm: z.string().nullable(),
+  project_slug: z.string().nullable(),
   timestamp: z.string().nullable(),
 });
 
@@ -38,6 +44,8 @@ CREATE TABLE IF NOT EXISTS embeddings (
   role TEXT NOT NULL,
   text TEXT NOT NULL,
   cwd TEXT,
+  cwd_norm TEXT,
+  project_slug TEXT,
   timestamp TEXT,
   vector BLOB NOT NULL,
   PRIMARY KEY (path, line_number)
@@ -120,7 +128,7 @@ export async function embedCorpus(db: Database): Promise<boolean> {
 
   const pending = db
     .query(
-      `SELECT path, line_number, provider, session_id, role, text, cwd, timestamp
+      `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp
        FROM messages_fts
        WHERE NOT EXISTS (
          SELECT 1 FROM embeddings
@@ -131,8 +139,8 @@ export async function embedCorpus(db: Database): Promise<boolean> {
     .all();
 
   const insert = db.prepare(
-    `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, timestamp, vector)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, vector)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   for (const row of pending) {
@@ -148,6 +156,8 @@ export async function embedCorpus(db: Database): Promise<boolean> {
       parsed.data.role,
       parsed.data.text,
       parsed.data.cwd,
+      parsed.data.cwd_norm,
+      parsed.data.project_slug,
       parsed.data.timestamp,
       new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
     );
@@ -197,7 +207,7 @@ function searchWithSqliteVec(
   try {
     const rows = db
       .query(
-        `SELECT path, line_number, provider, session_id, role, text, cwd, timestamp, vector,
+        `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, vector,
                 vec_distance_cosine(vector, ?) AS distance
          FROM embeddings
          ORDER BY distance
@@ -227,13 +237,24 @@ function matchesFilters(
     provider: string;
     role: string;
     cwd: string | null;
+    cwd_norm: string | null;
+    project_slug: string | null;
     timestamp: string | null;
   },
   query: SearchQuery,
 ): boolean {
   if (query.provider !== undefined && row.provider !== query.provider) return false;
   if (query.role !== undefined && row.role !== query.role) return false;
-  if (query.cwd !== undefined && (row.cwd ?? "").indexOf(query.cwd) === -1) return false;
+  if (
+    query.cwd !== undefined &&
+    !matchesCwdFilter(
+      query.cwd,
+      row.cwd ?? row.cwd_norm ?? undefined,
+      row.project_slug ?? undefined,
+    )
+  ) {
+    return false;
+  }
   if (row.timestamp === null) return true;
   const stamp = Date.parse(row.timestamp);
   if (Number.isNaN(stamp)) return true;

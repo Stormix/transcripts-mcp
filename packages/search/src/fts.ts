@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 
 import { z } from "zod";
 
-import { readJsonlLines } from "@transcripts-mcp/core";
+import { normalizeCwd, readJsonlLines, slugifyCwd } from "@transcripts-mcp/core";
 
 import {
   deleteEmbeddings,
@@ -22,6 +22,9 @@ import {
   searchVectors,
 } from "./semantic.ts";
 
+const schemaVersion = 2;
+const schemaVersionKey = "schema_version";
+
 const schema = `
 PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS files (
@@ -29,6 +32,8 @@ CREATE TABLE IF NOT EXISTS files (
   provider TEXT NOT NULL,
   session_id TEXT NOT NULL,
   cwd TEXT,
+  cwd_norm TEXT,
+  project_slug TEXT,
   mtime_ms INTEGER NOT NULL,
   size_bytes INTEGER NOT NULL
 );
@@ -37,6 +42,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
   provider UNINDEXED,
   role UNINDEXED,
   cwd UNINDEXED,
+  cwd_norm UNINDEXED,
+  project_slug UNINDEXED,
   session_id UNINDEXED,
   path UNINDEXED,
   line_number UNINDEXED,
@@ -70,14 +77,15 @@ export interface BuildIndexResult {
   semantic: boolean;
 }
 
+let loggedHybridFallback = false;
+
 export class TranscriptIndex {
   readonly #db: Database;
   #sqliteVecLoaded: boolean | undefined;
 
   constructor(dbPath = defaultIndexPath()) {
     this.#db = new Database(dbPath, { create: true });
-    this.#db.exec(schema);
-    ensureSemanticSchema(this.#db);
+    this.#ensureSchema();
   }
 
   close(): void {
@@ -129,6 +137,7 @@ export class TranscriptIndex {
           adapter,
           summary.path,
           summary.cwd,
+          summary.projectSlug,
           info.mtimeMs,
           info.size,
         );
@@ -154,9 +163,15 @@ export class TranscriptIndex {
   async searchHybrid(query: SearchQuery): Promise<SearchHit[]> {
     const limit = query.limit ?? 20;
     const ftsHits = this.#searchFts(query, limit);
-    if (!this.semanticAvailable()) return ftsHits;
+    if (!this.semanticAvailable()) {
+      logHybridFallback("no embeddings in index");
+      return ftsHits;
+    }
     const embedding = await embedQuery(query.query);
-    if (embedding === undefined) return ftsHits;
+    if (embedding === undefined) {
+      logHybridFallback("embed query failed");
+      return ftsHits;
+    }
     const useSqliteVec = await this.#ensureSqliteVec();
     return fuseHits(ftsHits, searchVectors(this.#db, embedding, query, limit, useSqliteVec), limit);
   }
@@ -179,8 +194,8 @@ export class TranscriptIndex {
       params.push(query.role);
     }
     if (query.cwd !== undefined) {
-      filters.push("cwd LIKE ?");
-      params.push(`%${query.cwd}%`);
+      filters.push("(cwd_norm = ? OR project_slug = ?)");
+      params.push(normalizeCwd(query.cwd), slugifyCwd(query.cwd));
     }
     if (query.since !== undefined) {
       filters.push("(timestamp IS NULL OR timestamp >= ?)");
@@ -220,42 +235,61 @@ export class TranscriptIndex {
   async #indexFile(
     adapter: TranscriptAdapter,
     path: string,
-    cwd: string | undefined,
+    summaryCwd: string | undefined,
+    projectSlug: string | undefined,
     mtimeMs: number,
     sizeBytes: number,
   ): Promise<number> {
     this.#deleteFile(path);
     const sessionId = adapter.sessionIdFromPath(path);
-    const insert = this.#db.prepare(
-      `INSERT INTO messages_fts (text, provider, role, cwd, session_id, path, line_number, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    );
+    let cwd = summaryCwd;
+    const pending: Array<{
+      text: string;
+      role: string;
+      lineNumber: number;
+      timestamp: string | null;
+    }> = [];
     let lineNumber = 0;
-    let count = 0;
     for await (const text of readJsonlLines(path)) {
       lineNumber += 1;
       if (text.trim().length === 0) continue;
+      cwd ??= adapter.cwdFromRawLine(text);
       const message = adapter.parseRawLine(text);
       if (message === null) continue;
+      pending.push({
+        text: message.text,
+        role: message.role,
+        lineNumber,
+        timestamp: message.timestamp?.toISOString() ?? null,
+      });
+    }
+    const cwdNorm = cwd === undefined ? null : normalizeCwd(cwd);
+    const slug = projectSlug ?? null;
+    const insert = this.#db.prepare(
+      `INSERT INTO messages_fts (text, provider, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    for (const row of pending) {
       insert.run(
-        message.text,
+        row.text,
         adapter.id,
-        message.role,
+        row.role,
         cwd ?? null,
+        cwdNorm,
+        slug,
         sessionId,
         path,
-        lineNumber,
-        message.timestamp?.toISOString() ?? null,
+        row.lineNumber,
+        row.timestamp,
       );
-      count += 1;
     }
     this.#db
       .prepare(
-        `INSERT INTO files (path, provider, session_id, cwd, mtime_ms, size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO files (path, provider, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(path, adapter.id, sessionId, cwd ?? null, mtimeMs, sizeBytes);
-    return count;
+      .run(path, adapter.id, sessionId, cwd ?? null, cwdNorm, slug, mtimeMs, sizeBytes);
+    return pending.length;
   }
 
   #deleteFile(path: string): void {
@@ -269,6 +303,36 @@ export class TranscriptIndex {
     this.#db.exec("DELETE FROM files");
     this.#db.exec("DELETE FROM embeddings");
   }
+
+  #ensureSchema(): void {
+    this.#db.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    const row = this.#db.query("SELECT value FROM meta WHERE key = ?").get(schemaVersionKey);
+    const parsed = z.object({ value: z.string() }).safeParse(row);
+    const current = parsed.success ? parsed.data.value : undefined;
+    if (current !== String(schemaVersion)) {
+      this.#dropSearchTables();
+    }
+    this.#db.exec(schema);
+    ensureSemanticSchema(this.#db);
+    if (current !== String(schemaVersion)) {
+      this.#db.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", [
+        schemaVersionKey,
+        String(schemaVersion),
+      ]);
+    }
+  }
+
+  #dropSearchTables(): void {
+    this.#db.exec("DROP TABLE IF EXISTS messages_fts");
+    this.#db.exec("DROP TABLE IF EXISTS files");
+    this.#db.exec("DROP TABLE IF EXISTS embeddings");
+  }
+}
+
+function logHybridFallback(reason: string): void {
+  if (loggedHybridFallback) return;
+  loggedHybridFallback = true;
+  console.error(`search_transcripts hybrid falling back to fts: ${reason}`);
 }
 
 export function defaultIndexPath(): string {
