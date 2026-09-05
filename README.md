@@ -2,6 +2,19 @@
 
 Local stdio MCP server that queries Cursor, Claude Code, and Codex session transcripts already on disk.
 
+Each harness already writes JSONL as you work. Point any of them at this server and they can list, dump, and search those sessions. Nothing is uploaded; the server only reads local files (plus an optional search index under `~/.transcripts-mcp`).
+
+## What you can ask
+
+Once a client has the server configured:
+
+- What was I working on in my last Cursor session?
+- Search my Claude Code transcripts for authentication
+- Dump the Codex session from this afternoon
+- Which providers have sessions on this machine?
+
+That is searchable transcript text, not the previous session's memory. The other tool still has to read.
+
 ## Requirements
 
 - [Bun](https://bun.sh) >= 1.2
@@ -22,34 +35,77 @@ bun apps/mcp/src/index.ts
 or:
 
 ```bash
-pnpm --filter @transcripts-mcp/mcp start
+pnpm start
 ```
 
-stdout is the JSON-RPC channel. Logs go to stderr.
+stdout is JSON-RPC. Logs go to stderr.
 
-## Cursor `mcp.json`
+## Configure
+
+Use an absolute path to `apps/mcp/src/index.ts`. Windows paths work (`V:/dev/transcripts-mcp/apps/mcp/src/index.ts` or `V:\\dev\\...`). Restart the client after saving.
+
+The same launch command is used everywhere:
+
+```bash
+bun /absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts
+```
+
+### Cursor (`~/.cursor/mcp.json`)
 
 ```json
 {
   "mcpServers": {
     "transcripts": {
       "command": "bun",
-      "args": ["/path/to/transcripts-mcp/apps/mcp/src/index.ts"]
+      "args": ["/absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts"]
     }
   }
 }
 ```
 
-Use an absolute path to `apps/mcp/src/index.ts`. Windows paths work (`V:/dev/transcripts-mcp/apps/mcp/src/index.ts` or `V:\\dev\\...`).
+Project scope: the same object in `.cursor/mcp.json`.
 
-## Environment
+### Claude Code (`~/.claude.json`)
 
-| Variable                | Default                       |
-| ----------------------- | ----------------------------- |
-| `CURSOR_HOME`           | `~/.cursor`                   |
-| `CLAUDE_HOME`           | `~/.claude`                   |
-| `CODEX_HOME`            | `~/.codex`                    |
-| `TRANSCRIPTS_MCP_INDEX` | `~/.transcripts-mcp/index.db` |
+Add under the top-level `mcpServers` key (user scope):
+
+```json
+{
+  "mcpServers": {
+    "transcripts": {
+      "command": "bun",
+      "args": ["/absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts"]
+    }
+  }
+}
+```
+
+Project scope: the same `mcpServers` object in `.mcp.json` at a repo root. Or:
+
+```bash
+claude mcp add --scope user transcripts -- bun /absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts
+```
+
+### Codex (`~/.codex/config.toml`)
+
+```toml
+[mcp_servers.transcripts]
+command = "bun"
+args = ["/absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts"]
+```
+
+Or:
+
+```bash
+codex mcp add transcripts -- bun /absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts
+```
+
+## How it works
+
+1. You work in Claude Code, Cursor, or Codex. Sessions land as JSONL under `~/.claude`, `~/.cursor`, or `~/.codex`.
+2. You switch tools. The new client calls this server.
+3. Adapters parse each harness into a shared message shape.
+4. `grep_transcripts` scans files immediately. `search_transcripts` ranks over an optional local FTS5 index (`build_index`).
 
 ## Tools
 
@@ -69,6 +125,17 @@ Provider ids: `cursor`, `claude-code`, `codex`.
 1. **grep** (`grep_transcripts`) — `@ff-labs/fff-bun` fuzzy / plain / regex. No index. Falls back to a streaming scan if the native binary fails to load.
 2. **FTS5** (`search_transcripts`, `mode: "fts"`) — `bun:sqlite` + `bm25()` over normalized message text. Requires `build_index`.
 3. **semantic** (optional) — `build_index` with `semantic: true` downloads ~23 MB ONNX (`all-MiniLM-L6-v2`) on first run. Then `search_transcripts` accepts `mode: "hybrid"` (BM25 + vectors, reciprocal rank fusion). The server works without this tier.
+
+## Environment
+
+Defaults match a typical install. Set these only to override.
+
+| Variable                | Default                       |
+| ----------------------- | ----------------------------- |
+| `CURSOR_HOME`           | `~/.cursor`                   |
+| `CLAUDE_HOME`           | `~/.claude`                   |
+| `CODEX_HOME`            | `~/.codex`                    |
+| `TRANSCRIPTS_MCP_INDEX` | `~/.transcripts-mcp/index.db` |
 
 ## Safety
 
