@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "transcripts": {
+      "command": "npx",
+      "args": ["-y", "--registry=https://npm.pkg.github.com", "@stormix/transcripts-mcp@0.0.0"],
+      "env": {
+        "NODE_AUTH_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}

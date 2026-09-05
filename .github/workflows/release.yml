@@ -1,0 +1,177 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  bundle:
+    name: Bundle JS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v2
+        with:
+          runtime: node@lts
+          cache: true
+          install: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bundle
+        run: bun scripts/build-cli.ts --bundle-only
+
+      - name: Sync plugin version
+        run: bun scripts/sync-plugin-version.ts
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-bundle
+          path: |
+            packages/cli/dist/cli.js
+            packages/cli/dist/server.js
+            packages/cli/dist/publish-package.json
+
+  compile:
+    name: Compile ${{ matrix.only }}
+    needs: bundle
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            only: linux-x64
+          - os: ubuntu-24.04-arm
+            only: linux-arm64
+          - os: windows-latest
+            only: win32-x64
+          - os: macos-latest
+            only: darwin-arm64
+          - os: macos-13
+            only: darwin-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v2
+        with:
+          runtime: node@lts
+          cache: true
+          install: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compile host binary
+        run: bun scripts/build-cli.ts --only=${{ matrix.only }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.only }}
+          path: packages/cli/dist/platforms/${{ matrix.only }}
+
+  publish:
+    name: Publish GitHub Packages
+    needs: [bundle, compile]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: "@stormix"
+
+      - name: Download bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-bundle
+          path: packages/cli/dist
+
+      - name: Download linux-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-linux-x64
+          path: packages/cli/dist/platforms/linux-x64
+
+      - name: Download linux-arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-linux-arm64
+          path: packages/cli/dist/platforms/linux-arm64
+
+      - name: Download win32-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-win32-x64
+          path: packages/cli/dist/platforms/win32-x64
+
+      - name: Download darwin-arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-darwin-arm64
+          path: packages/cli/dist/platforms/darwin-arm64
+
+      - name: Download darwin-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-darwin-x64
+          path: packages/cli/dist/platforms/darwin-x64
+
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for dir in packages/cli/dist/platforms/*; do
+            npm publish "$dir" --access restricted
+          done
+
+      - name: Publish main package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          stage=$(mktemp -d)
+          cp packages/cli/dist/publish-package.json "$stage/package.json"
+          mkdir -p "$stage/dist"
+          cp packages/cli/dist/cli.js packages/cli/dist/server.js "$stage/dist/"
+          cp packages/cli/README.md "$stage/"
+          npm publish "$stage" --access restricted
+
+      - name: Attach binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/cli/dist/platforms/darwin-arm64/transcripts-mcp
+            packages/cli/dist/platforms/darwin-x64/transcripts-mcp
+            packages/cli/dist/platforms/linux-arm64/transcripts-mcp
+            packages/cli/dist/platforms/linux-x64/transcripts-mcp
+            packages/cli/dist/platforms/win32-x64/transcripts-mcp.exe
+          generate_release_notes: true

@@ -1,0 +1,39 @@
+{
+  "name": "@stormix/transcripts-mcp",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Local stdio MCP server for Cursor, Claude Code, and Codex session transcripts.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Stormix/transcripts-mcp.git"
+  },
+  "bin": {
+    "transcripts-mcp": "./dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js",
+    "dist/server.js",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "build": "bun ../../scripts/build-cli.ts --bundle-only",
+    "check-types": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run --config ../../vitest.config.ts"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@transcripts-mcp/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

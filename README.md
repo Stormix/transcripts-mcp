@@ -22,9 +22,38 @@ That is searchable transcript text, not the previous session's memory. The other
 
 ## Install
 
+From source:
+
 ```bash
 pnpm install
 ```
+
+From GitHub Packages (not the public npm registry). Add to `~/.npmrc`:
+
+```
+@stormix:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
+```
+
+The token needs `read:packages`. Then:
+
+```bash
+npx -y --registry=https://npm.pkg.github.com @stormix/transcripts-mcp
+bunx --bun --registry=https://npm.pkg.github.com @stormix/transcripts-mcp
+pnpm dlx --registry=https://npm.pkg.github.com @stormix/transcripts-mcp
+```
+
+`npx` / `pnpm dlx` spawn the platform binary: native fff grep, FTS5, no semantic/hybrid (`sqlite-vec` and the ONNX engine are not embeddable). `bunx --bun` runs the bundled server in-process and can use semantic/hybrid. If the binary is missing, the shim looks for `bun` on PATH.
+
+## Cursor plugin
+
+This repo is a Cursor Plugin. Install it from Customize, or symlink for local work:
+
+```bash
+ln -s /path/to/transcripts-mcp/plugin ~/.cursor/plugins/local/transcripts-mcp
+```
+
+The plugin's `mcp.json` runs `npx -y --registry=https://npm.pkg.github.com @stormix/transcripts-mcp@<pinned version>`. Set the `GITHUB_TOKEN` plugin variable (`read:packages`) so npx can fetch the private package.
 
 ## Launch
 
@@ -48,6 +77,12 @@ The same launch command is used everywhere:
 
 ```bash
 bun /absolute/path/to/transcripts-mcp/apps/mcp/src/index.ts
+```
+
+Or, after a GitHub Packages install:
+
+```bash
+npx -y --registry=https://npm.pkg.github.com @stormix/transcripts-mcp
 ```
 
 ### Cursor (`~/.cursor/mcp.json`)
@@ -144,9 +179,11 @@ Read-only on transcripts. The only write is the search index at `~/.transcripts-
 ## Workspace
 
 - `apps/mcp` — stdio server, tool registration, adapter wiring
+- `packages/cli` — published `@stormix/transcripts-mcp` shim and GitHub Packages artifacts
 - `packages/core` — types, adapter contract, jsonl reader, registry
 - `packages/adapters` — Cursor, Claude Code, Codex
 - `packages/search` — grep (fff), FTS5, optional semantic search
+- `plugin/` — Cursor Plugin manifest, skill, and `mcp.json`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to add a harness.
 

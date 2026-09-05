@@ -1,0 +1,16 @@
+{
+  "name": "transcripts-mcp",
+  "owner": {
+    "name": "Stormix"
+  },
+  "metadata": {
+    "description": "Local MCP server and skill for searching Cursor, Claude Code, and Codex session transcripts."
+  },
+  "plugins": [
+    {
+      "name": "transcripts-mcp",
+      "source": "plugin",
+      "description": "Search local Cursor, Claude Code, and Codex session transcripts via MCP."
+    }
+  ]
+}
