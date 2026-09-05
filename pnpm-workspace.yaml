@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - tools/*
+  - distribution/*
 
 catalog:
   "@oxlint/plugins": ^1.78.0

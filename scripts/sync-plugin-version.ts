@@ -45,12 +45,12 @@ const version = versionSchema.parse(
   JSON.parse(await readFile(join(repoRoot, "packages", "cli", "package.json"), "utf8")),
 ).version;
 
-const pluginPath = join(repoRoot, "plugin", ".cursor-plugin", "plugin.json");
+const pluginPath = join(repoRoot, "distribution", "plugin", ".cursor-plugin", "plugin.json");
 const plugin = pluginSchema.parse(JSON.parse(await readFile(pluginPath, "utf8")));
 plugin.version = version;
 await writeFile(pluginPath, `${JSON.stringify(plugin, null, 2)}\n`);
 
-const mcpPath = join(repoRoot, "plugin", "mcp.json");
+const mcpPath = join(repoRoot, "distribution", "plugin", "mcp.json");
 const mcp = mcpSchema.parse(JSON.parse(await readFile(mcpPath, "utf8")));
 mcp.mcpServers.transcripts.args = mcp.mcpServers.transcripts.args.map((arg) =>
   arg.startsWith("@stormix/transcripts-mcp@") ? `@stormix/transcripts-mcp@${version}` : arg,

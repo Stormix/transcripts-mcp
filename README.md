@@ -50,7 +50,7 @@ pnpm dlx --registry=https://npm.pkg.github.com @stormix/transcripts-mcp
 This repo is a Cursor Plugin. Install it from Customize, or symlink for local work:
 
 ```bash
-ln -s /path/to/transcripts-mcp/plugin ~/.cursor/plugins/local/transcripts-mcp
+ln -s /path/to/transcripts-mcp/distribution/plugin ~/.cursor/plugins/local/transcripts-mcp
 ```
 
 The plugin's `mcp.json` runs `npx -y --registry=https://npm.pkg.github.com @stormix/transcripts-mcp@<pinned version>`. Set the `GITHUB_TOKEN` plugin variable (`read:packages`) so npx can fetch the private package.
@@ -183,7 +183,7 @@ Read-only on transcripts. The only write is the search index at `~/.transcripts-
 - `packages/core` — types, adapter contract, jsonl reader, registry
 - `packages/adapters` — Cursor, Claude Code, Codex
 - `packages/search` — grep (fff), FTS5, optional semantic search
-- `plugin/` — Cursor Plugin manifest, skill, and `mcp.json`
+- `distribution/plugin` — Cursor Plugin manifest, skill, and `mcp.json`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to add a harness.
 

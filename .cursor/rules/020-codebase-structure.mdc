@@ -13,11 +13,13 @@ pnpm + Turborepo monorepo. Scope is `@transcripts-mcp/*`. Libraries export TypeS
 ### Workspaces
 
 - `apps/mcp` — `@transcripts-mcp/mcp`: stdio MCP server, tool registration, adapter wiring
+- `apps/www` — `@transcripts-mcp/www`: marketing site (Vite + React), Cloudflare Workers static assets
 - `packages/core` — `@transcripts-mcp/core`: types, `defineJsonlAdapter`, jsonl reader, registry, `walkGlob`
 - `packages/adapters` — `@transcripts-mcp/adapters`: Cursor, Claude Code, Codex (`allAdapters`)
 - `packages/search` — `@transcripts-mcp/search`: grep (fff), FTS5, optional semantic search
 - `tools/oxlint-plugins` — `@transcripts-mcp/oxlint-plugins`: custom OxLint rules (`anti-slop`)
 - `tools/typescript-config` — `@transcripts-mcp/typescript-config`: shared tsconfig
+- `distribution/plugin` — `@transcripts-mcp/plugin`: Cursor Plugin manifest, skill, and `mcp.json`
 
 `adapters` and `search` depend on `core`. `apps/mcp` depends on all three and is the only place that creates the registry from `allAdapters`. Search never imports adapters.
 
