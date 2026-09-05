@@ -1,11 +1,10 @@
 import type { PageId } from "@/lib/page";
 import type { ReactNode } from "react";
 
-import { footerPages, footerProject, providers } from "@/lib/site";
+import { footerPages, footerProject } from "@/lib/site";
 
 import { Container } from "./container";
 import { LogoMark } from "./logo-mark";
-import { ProviderIcon } from "./provider-icon";
 
 export function SiteFooter({ page }: { page: PageId }) {
   return (
@@ -62,14 +61,6 @@ export function SiteFooter({ page }: { page: PageId }) {
             </a>
             .
           </p>
-          <div className="flex items-center gap-4">
-            {providers.map((provider) => (
-              <span key={provider.id} className="flex items-center gap-1.5">
-                <ProviderIcon id={provider.id} className="size-3.5 text-faint" />
-                <span className="font-mono text-xs text-faint">{provider.id}</span>
-              </span>
-            ))}
-          </div>
         </div>
       </Container>
     </footer>
