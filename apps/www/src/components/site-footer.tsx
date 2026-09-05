@@ -50,7 +50,18 @@ export function SiteFooter({ page }: { page: PageId }) {
           </div>
         </div>
         <div className="flex flex-col gap-3 border-t border-line-soft pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-body text-[12.5px] text-faint">MIT licensed.</p>
+          <p className="font-body text-[12.5px] text-faint">
+            MIT licensed. Built by{" "}
+            <a
+              href="https://stormix.co/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-paper underline underline-offset-4 transition-colors hover:text-coral"
+            >
+              Stormix
+            </a>
+            .
+          </p>
           <div className="flex items-center gap-4">
             {providers.map((provider) => (
               <span key={provider.id} className="flex items-center gap-1.5">
