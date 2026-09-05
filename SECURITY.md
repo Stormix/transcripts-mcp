@@ -1,26 +1,26 @@
 # Security
 
-The MCP server reads local Cursor, Claude Code, and Codex session files and may write a search index under `~/.transcripts-mcp`. Those files never leave the machine. Do not report a “data exfiltration” finding that is the server reading paths it is designed to read.
+transcripts-mcp reads local Cursor, Claude Code, and Codex transcripts and returns results to the connected MCP client. It does not modify transcript files or upload their contents. The client may send retrieved text to its model provider according to its own settings.
 
-## Reporting
+Indexed search writes message text to a local SQLite database. Optional semantic search also stores embeddings and downloads and caches model files.
 
-Use [GitHub private vulnerability reporting](https://github.com/Stormix/transcripts-mcp/security/advisories/new) on this repository. If that is unavailable, email [hello@stormix.co](mailto:hello@stormix.co).
+## Reporting a vulnerability
 
-Include enough to reproduce: affected version or commit, what you ran, and what went wrong. Do not open a public issue for an unpatched vulnerability.
+Use [GitHub private vulnerability reporting](https://github.com/Stormix/transcripts-mcp/security/advisories/new). If it is unavailable, email [hello@stormix.co](mailto:hello@stormix.co).
 
-We will acknowledge the report and say what we are doing with it.
+Include the affected version or commit, steps to reproduce, and the impact. Remove secrets and private transcript contents from examples. Please do not open a public issue for an unpatched vulnerability.
+
+We will acknowledge your report and follow up with our assessment and next steps.
 
 ## Scope
 
-In scope:
+Security reports may include:
 
-- Path traversal or writes outside the intended index location
+- Path traversal or writes outside intended storage locations
 - Execution of transcript contents as code
-- Secrets from the repo, CI, or the published package
+- Exposed secrets in the repository, CI, or published package
 - Supply-chain issues in the release workflow
 
-Out of scope:
+Listing and searching local transcripts is the server's intended behavior. Reports should explain how an issue exceeds that access or exposes data unexpectedly.
 
-- The server listing or searching transcripts on the same machine (that is the product)
-- Bugs in Cursor, Claude Code, or Codex themselves
-- Denial of service against a local stdio process
+Issues in Cursor, Claude Code, or Codex should be reported to their maintainers. Denial of service against the local stdio process is outside this security policy's scope.

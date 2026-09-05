@@ -39,7 +39,7 @@ export const howItWorks = [
   },
   {
     title: "Grep now, rank later",
-    body: "grep_transcripts scans the files immediately. search_transcripts ranks over an index you build once.",
+    body: "grep_transcripts scans the files immediately. search_transcripts ranks results from a local index. Run build_index to create or refresh it.",
   },
 ] as const;
 
@@ -63,14 +63,14 @@ export const searchTiers = [
     name: "semantic",
     api: 'mode: "hybrid"',
     desc: "Search by meaning, fused with full-text ranking. Needs a semantic build, and a server running under Bun.",
-    badge: "build_index --semantic",
+    badge: "semantic: true",
   },
 ] as const;
 
 export const tools = [
   {
     name: "list_providers",
-    desc: "Which of Cursor, Claude Code, and Codex are installed, and how many session files each has.",
+    desc: "Available transcript providers, with capped session file counts.",
     inputs: "—",
   },
   {
@@ -124,7 +124,7 @@ export const privacyUpdatedIso = "2026-09-06";
 
 export const privacyCopy = {
   title: "Privacy policy",
-  summary: "What this site collects, why, how long it is kept, and how to make us stop.",
+  summary: "How this site handles personal data and how to contact us about it.",
   whoWeAre: {
     title: "Who we are",
     p1: "The maintainer of transcripts-mcp is the data controller for the personal data described here.",
@@ -132,7 +132,7 @@ export const privacyCopy = {
   },
   scope: {
     title: "What this policy covers",
-    p1: "This policy covers transcriptsmcp.dev. It does not cover the MCP server on your machine: that process reads local session files and may write a local search index. Those files never leave your computer.",
+    p1: "This policy covers transcriptsmcp.dev. It does not cover the MCP server on your machine: that process reads local session files and may write a local search index. The server returns transcript text to your MCP client, which may send it to its model provider according to its own settings.",
     p2: "It does not cover copies someone else hosts from the source, or GitHub if you open an issue or star the repo.",
   },
   whatWeCollect: {
@@ -141,7 +141,7 @@ export const privacyCopy = {
     technical:
       "Cloudflare sees your IP address, user agent, and the URL you requested, to serve the page and block abuse. Google sees your IP address when the page loads fonts.",
     installs:
-      "Installing the package talks to npm. A semantic index build downloads about 23 MB of ONNX from Hugging Face on first run. Those requests come from your machine. We do not receive them, or your transcripts.",
+      "Installing the package fetches files from npm. The first semantic index build downloads an embedding model from Hugging Face. Those requests come from your machine. We do not receive them, or your transcripts.",
   },
   whyWeUseIt: {
     title: "Why we use it, and on what legal basis",
@@ -167,12 +167,12 @@ export const privacyCopy = {
   },
   retention: {
     title: "How long we keep it",
-    body: "Cloudflare keeps request logs for a short security window. We do not keep a copy.",
+    body: "Cloudflare retains personal data according to the purposes for which it is processed and applicable legal obligations. Retention varies by data type and service.",
   },
   yourRights: {
     title: "Your rights",
     p1: "You can ask for a copy of your data, a correction, deletion, restriction, or to object.",
-    p2: `Write to ${privacyEmail}. We will answer within a month. What we hold is Cloudflare's request logs. You can also complain to the data protection authority where you live.`,
+    p2: `Write to ${privacyEmail}. We will answer within a month. You can also complain to the data protection authority where you live.`,
   },
   security: {
     title: "Security",
@@ -192,15 +192,16 @@ export const faqItems = [
   {
     question: "What does it search?",
     answer:
-      "Session transcripts Cursor, Claude Code, and Codex already write to disk. That is text from past chats, not the previous session's memory. The client still has to read the result.",
+      "It searches session transcripts saved by Cursor, Claude Code, and Codex. Your current client can read the retrieved conversations to recover context from earlier work.",
   },
   {
-    question: "Which clients?",
-    answer: "Cursor, Claude Code, and Codex. Same launch command in each config.",
+    question: "Which clients can use it?",
+    answer:
+      "MCP clients that support local stdio servers, including Cursor, Claude Code, and Codex. The setup section includes configurations for these clients.",
   },
   {
     question: "Is it hosted?",
-    answer: "No. You run the server locally. This site is the landing page plus Privacy and FAQ.",
+    answer: "No. The server runs on your machine and reads your local transcript files.",
   },
   {
     question: "Do I need an index?",
@@ -210,16 +211,17 @@ export const faqItems = [
   {
     question: "Why doesn't hybrid work with npx?",
     answer:
-      "The npx platform binary cannot embed sqlite-vec or the ONNX engine. Use bunx --bun transcripts-mcp for that tier.",
+      "The npx platform binary cannot embed sqlite-vec or the ONNX engine. Run the server with bunx --bun transcripts-mcp to use semantic search.",
   },
   {
-    question: "Does it write my transcripts?",
-    answer: "No. The only write is the optional search index.",
+    question: "Does it modify my transcripts?",
+    answer:
+      "No. It reads transcripts without modifying them. Indexed search stores message text and optional embeddings locally; semantic search also downloads and caches model files.",
   },
   {
     question: "How do I install it?",
     answer:
-      "On the site, Cursor and VS Code are one-click install links. Claude Code, Gemini, and Codex copy a CLI command. Claude Desktop, Windsurf, and Manual copy the mcpServers JSON. ChatGPT connectors need a remote HTTPS URL, which this local stdio server does not have. Cursor also has a plugin under Customize.",
+      "On the site, Cursor and VS Code are one-click install links. Claude Code, Gemini, and Codex copy a CLI command. Claude Desktop, Windsurf, and Manual copy the mcpServers JSON. ChatGPT connectors need a remote HTTPS URL, which this local stdio server does not have. The repository also includes a Cursor plugin.",
   },
   {
     question: "Can I change the paths?",

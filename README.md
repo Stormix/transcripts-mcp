@@ -1,54 +1,52 @@
 # transcripts-mcp
 
-Local stdio MCP server that queries Cursor, Claude Code, and Codex session transcripts already on disk.
+Search your Cursor, Claude Code, and Codex conversations from any MCP client.
+
+transcripts-mcp reads session transcripts already on your machine. Use it to find a previous implementation, recover the reasoning behind a decision, or bring context from one coding tool into another.
 
 [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=transcripts&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInRyYW5zY3JpcHRzLW1jcCJdfQ%3D%3D)
 [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?%7B%22name%22%3A%22transcripts%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22transcripts-mcp%22%5D%7D)
 
-Site: [transcriptsmcp.dev](https://transcriptsmcp.dev/)
+[Website](https://transcriptsmcp.dev/) · [Setup](#configure) · [Tool reference](#tools) · [Contributing](CONTRIBUTING.md)
 
-Each harness already writes JSONL as you work. Point any MCP client at this server and they can list, dump, and search those sessions. Nothing is uploaded; the server only reads local files (plus an optional search index under `~/.transcripts-mcp`).
+## What it does
 
-## What you can ask
+- **Browse sessions** across all three tools, filtered by project or date.
+- **Read conversations** as normalized messages, with a limit on how much is returned.
+- **Search immediately** with fuzzy, plain-text, or regex matching. No index required.
+- **Rank results** with a local full-text index and optional semantic search.
 
-Once a client has the server configured:
+For example, ask your connected client:
 
-- What was I working on in my last Cursor session?
-- Search my Claude Code transcripts for authentication
-- Dump the Codex session from this afternoon
-- Which providers have sessions on this machine?
+> Find the Claude Code conversation where we added authentication to this project.
 
-That is searchable transcript text, not the previous session's memory. The other tool still has to read.
+> Read my most recent Cursor session and summarize what remains to be done.
+
+> Search my Codex transcripts for the database migration error.
+
+The server returns transcript text for the current client to read. It does not restore a previous session's model state.
 
 ## Install
 
+Requires Node.js 24 or later for the npm launcher. Add the command below to your MCP client using one of the configurations in the next section:
+
 ```bash
 npx -y transcripts-mcp
-bunx --bun transcripts-mcp
-pnpm dlx transcripts-mcp
 ```
 
-`npx` / `pnpm dlx` spawn the platform binary (native fff + FTS; no semantic). `bunx --bun` runs the bundled server in-process and can use semantic/hybrid. If the binary is missing, the shim looks for `bun` on PATH.
+You can also launch with `pnpm dlx transcripts-mcp` or `bunx --bun transcripts-mcp`.
 
-## Cursor plugin
+The npm and pnpm launchers use a platform binary with grep and full-text search. If that binary is unavailable, they look for Bun on `PATH`. Optional semantic search requires running under Bun; see [Search](#search).
 
-This repo is a Cursor Plugin. Install it from Customize, or symlink for local work:
-
-```bash
-ln -s /path/to/transcripts-mcp/distribution/plugin ~/.cursor/plugins/local/transcripts-mcp
-```
-
-The plugin's `mcp.json` runs `npx -y transcripts-mcp@<pinned version>`.
+The server communicates over stdio and is intended to be launched by an MCP client.
 
 ## Configure
 
-Restart the client after saving. The same launch command is used everywhere:
+Choose your client below, save the configuration, and restart the client.
 
-```bash
-npx -y transcripts-mcp
-```
+### Cursor
 
-### Cursor (`~/.cursor/mcp.json`)
+Add to `~/.cursor/mcp.json` for all projects, or `.cursor/mcp.json` for one project:
 
 ```json
 {
@@ -61,30 +59,19 @@ npx -y transcripts-mcp
 }
 ```
 
-Project scope: the same object in `.cursor/mcp.json`.
+### Claude Code
 
-### Claude Code (`~/.claude.json`)
-
-Add under the top-level `mcpServers` key (user scope):
-
-```json
-{
-  "mcpServers": {
-    "transcripts": {
-      "command": "npx",
-      "args": ["-y", "transcripts-mcp"]
-    }
-  }
-}
-```
-
-Project scope: the same `mcpServers` object in `.mcp.json` at a repo root. Or:
+Register the server for your user account:
 
 ```bash
 claude mcp add --scope user transcripts -- npx -y transcripts-mcp
 ```
 
-### Codex (`~/.codex/config.toml`)
+For project scope, add the same `mcpServers` configuration shown above to `.mcp.json` at the repository root.
+
+### Codex
+
+Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.transcripts]
@@ -92,41 +79,67 @@ command = "npx"
 args = ["-y", "transcripts-mcp"]
 ```
 
-Or:
+### Cursor plugin
+
+The repository also includes a Cursor plugin in [distribution/plugin](distribution/plugin). For local development on macOS or Linux, symlink it into Cursor's local plugin directory:
 
 ```bash
-codex mcp add transcripts -- npx -y transcripts-mcp
+ln -s /path/to/transcripts-mcp/distribution/plugin ~/.cursor/plugins/local/transcripts-mcp
 ```
 
-## How it works
-
-1. You work in Claude Code, Cursor, or Codex. Sessions land as JSONL under `~/.claude`, `~/.cursor`, or `~/.codex`.
-2. You switch tools. The new client calls this server.
-3. Adapters parse each harness into a shared message shape.
-4. `grep_transcripts` scans files immediately. `search_transcripts` ranks over an optional local FTS5 index (`build_index`).
+The plugin includes an MCP configuration pinned to a package version.
 
 ## Tools
 
-| Tool                 | Inputs                                                                                                                              | What it does                                                                                      |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `list_providers`     | (none)                                                                                                                              | Harnesses on this machine, with availability and a capped session file count                      |
-| `list_sessions`      | `provider?`, `cwd?`, `since?`, `until?`, `limit?` (1–200, default 50)                                                               | Session summaries, newest first. `since` / `until` are ISO-8601. Does not return full transcripts |
-| `get_transcript`     | `provider`, `id`, `path?`, `limit?` (1–1000, default 200)                                                                           | Normalized messages for one session                                                               |
-| `grep_transcripts`   | `query`, `mode?` (`plain` \| `regex` \| `fuzzy`, default `fuzzy`), `provider?`, `limit?` (1–200, default 50)                        | Fuzzy / plain / regex over raw JSONL, then adapter-normalized. No index required                  |
-| `search_transcripts` | `query`, `mode?` (`fts` \| `hybrid`, default `fts`), `provider?`, `role?`, `cwd?`, `since?`, `until?`, `limit?` (1–100, default 20) | BM25-ranked search over the FTS5 index. `hybrid` after a semantic build                           |
-| `build_index`        | `full?`, `semantic?`                                                                                                                | Build or refresh the FTS5 index. `full: true` rebuilds from scratch. `semantic: true` also embeds |
+| Tool                 | Purpose                                                               | Main inputs                                                               |
+| -------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `list_providers`     | Check which providers are available, with capped session file counts. | None                                                                      |
+| `list_sessions`      | List session summaries, newest first.                                 | `provider`, `cwd`, `since`, `until`, `limit`                              |
+| `get_transcript`     | Read normalized messages from one session.                            | **`provider`**, **`id`**, `path`, `limit`                                 |
+| `grep_transcripts`   | Search transcript files without building an index.                    | **`query`**, `mode`, `provider`, `limit`                                  |
+| `search_transcripts` | Search the local index for ranked results.                            | **`query`**, `mode`, `provider`, `role`, `cwd`, `since`, `until`, `limit` |
+| `build_index`        | Build or refresh the search index.                                    | `full`, `semantic`                                                        |
 
-Provider ids: `cursor`, `claude-code`, `codex`.
+Bold inputs are required. Provider IDs are `cursor`, `claude-code`, and `codex`. Date filters use ISO-8601 timestamps.
 
-## Search tiers
+Result limits default to 50 for session listing and grep, 200 messages for transcript reads, and 20 for indexed search. Maximums are 200, 1,000, and 100 respectively.
 
-1. **grep** (`grep_transcripts`) — `@ff-labs/fff-bun` fuzzy / plain / regex. No index. Falls back to a streaming scan if the native binary fails to load.
-2. **FTS5** (`search_transcripts`, `mode: "fts"`) — `bun:sqlite` + `bm25()` over normalized message text. Requires `build_index`.
-3. **semantic** (optional) — `build_index` with `semantic: true` downloads ~23 MB ONNX (`all-MiniLM-L6-v2`) on first run. Then `search_transcripts` accepts `mode: "hybrid"` (BM25 + vectors, reciprocal rank fusion). Semantic/hybrid only works when the server runs under Bun; the npx platform binary cannot embed `sqlite-vec` or the ONNX engine.
+## Search
 
-## Environment
+### Search without an index
 
-Defaults match a typical install. Set these only to override.
+`grep_transcripts` searches raw JSONL files and returns adapter-normalized results. It supports `fuzzy` (the default), `plain`, and `regex` modes.
+
+Search uses `@ff-labs/fff-bun`. If the native library cannot load, the server falls back to a streaming scan.
+
+### Full-text search
+
+Call `build_index`, then use `search_transcripts` with `mode: "fts"` (the default). Results are ranked with SQLite FTS5's BM25 scoring over normalized message text.
+
+Run `build_index` again to pick up transcript changes. Set `full: true` to rebuild from scratch.
+
+### Semantic search
+
+Run the server with Bun:
+
+```json
+{
+  "mcpServers": {
+    "transcripts": {
+      "command": "bunx",
+      "args": ["--bun", "transcripts-mcp"]
+    }
+  }
+}
+```
+
+Call `build_index` with `semantic: true`, then search with `mode: "hybrid"`. Hybrid search combines full-text and vector results using reciprocal rank fusion.
+
+The first semantic build downloads the `all-MiniLM-L6-v2` model. Embeddings are computed locally. The compiled platform binary does not include the semantic engine.
+
+## Configuration
+
+Transcript directories are discovered automatically. Set these environment variables in your MCP client's server configuration to override the defaults:
 
 | Variable                | Default                       |
 | ----------------------- | ----------------------------- |
@@ -135,28 +148,26 @@ Defaults match a typical install. Set these only to override.
 | `CODEX_HOME`            | `~/.codex`                    |
 | `TRANSCRIPTS_MCP_INDEX` | `~/.transcripts-mcp/index.db` |
 
-## Safety
+## Privacy and local storage
 
-Read-only on transcripts. The only write is the search index at `~/.transcripts-mcp/index.db` (or `TRANSCRIPTS_MCP_INDEX`).
+The server reads transcripts without modifying them. Search and embedding computation run locally; the server does not upload transcript content.
+
+Results are returned to the MCP client that requests them. That client may send retrieved text to its model provider according to its own settings.
+
+Indexed search stores message text and, when enabled, embeddings in the local SQLite index. Semantic search also downloads and caches model files on first use.
 
 ## From source
 
-Requires [Bun](https://bun.sh) >= 1.2 and [pnpm](https://pnpm.io).
+Requires [Bun](https://bun.sh) >= 1.2, [Node.js](https://nodejs.org) >= 24, and [pnpm](https://pnpm.io) 11.
 
 ```bash
+git clone https://github.com/Stormix/transcripts-mcp.git
+cd transcripts-mcp
 pnpm install
-bun apps/mcp/src/index.ts
-```
-
-or:
-
-```bash
 pnpm start
 ```
 
-stdout is JSON-RPC. Logs go to stderr.
-
-From-source MCP config uses an absolute path to `apps/mcp/src/index.ts`. Windows paths work (`V:/dev/transcripts-mcp/apps/mcp/src/index.ts` or `V:\\dev\\...`).
+To connect an MCP client to your checkout, use an absolute path to the server entry point:
 
 ```json
 {
@@ -169,17 +180,15 @@ From-source MCP config uses an absolute path to `apps/mcp/src/index.ts`. Windows
 }
 ```
 
-## Workspace
+On Windows, use forward slashes or escaped backslashes in JSON paths. The server writes JSON-RPC to stdout and logs to stderr.
 
-- `apps/mcp` — stdio server, tool registration, adapter wiring
-- `apps/www` — marketing site (Vite + React)
-- `packages/cli` — published `transcripts-mcp` shim and platform binaries
-- `packages/core` — types, adapter contract, jsonl reader, registry
-- `packages/adapters` — Cursor, Claude Code, Codex
-- `packages/search` — grep (fff), FTS5, optional semantic search
-- `distribution/plugin` — Cursor Plugin manifest, skill, and `mcp.json`
+## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to add a harness. AI-assisted contributions are welcome; read the [AI Policy](AI_POLICY.md) first. Security reports go through [SECURITY.md](SECURITY.md). Conduct is in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, checks, and instructions for adding a transcript adapter.
+
+The TypeScript monorepo is organized around three libraries: `packages/core` defines the transcript model, `packages/adapters` reads each provider's format, and `packages/search` implements search. The stdio server lives in `apps/mcp`; the published launcher lives in `packages/cli`.
+
+AI-assisted contributions follow the [AI Policy](AI_POLICY.md). Please use [SECURITY.md](SECURITY.md) to report vulnerabilities and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

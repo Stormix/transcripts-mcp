@@ -18,7 +18,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: What you want instead. Not a patch.
+      description: Describe the behavior you would like and how it would help.
     validations:
       required: true
   - type: dropdown

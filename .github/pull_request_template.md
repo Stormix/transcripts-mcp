@@ -1,46 +1,17 @@
-## Description
+## What changed and why
 
-Brief description of the changes introduced by this PR.
+<!-- Describe the problem, the resulting behavior, and any relevant tradeoffs. Link the issue or prior discussion. -->
 
-## Type of Change
+## Validation
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Code refactoring (no functional changes)
-- [ ] Tests (adding or updating tests)
-- [ ] Chore (maintenance, dependency updates, etc.)
+<!-- List the checks you ran and their results. For behavior changes, include regression coverage or steps to verify manually. -->
 
-## Related Issues
+## AI assistance
 
-- Closes #
-- Fixes #
-- Related to #
-
-## AI Disclosure
-
-<!-- If AI tools were used significantly (beyond autocomplete), note the tool and what it helped with -->
-
-- [ ] No significant AI assistance used
-- [ ] AI-assisted — Tool: [name], Used for: [what it helped with]
-
-## Testing
-
-- [ ] I have tested these changes locally
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
+<!-- If AI helped beyond autocomplete or minor editing, name the tool and what it helped with. Otherwise, write "None." See AI_POLICY.md. -->
 
 ## Checklist
 
-- [ ] I have read the [Contributing Guidelines](CONTRIBUTING.md), [AI Policy](AI_POLICY.md), and [Code of Conduct](CODE_OF_CONDUCT.md)
-- [ ] My code follows the style guidelines of this project (`pnpm lint` passes)
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings or errors
-- [ ] I have generated a changeset for my changes (if applicable)
-
-## Additional Notes
-
-<!-- Any additional information that reviewers should know about this PR -->
+- [ ] I have reviewed the change and can explain it.
+- [ ] Relevant tests, lint, formatting, and type checks pass.
+- [ ] Documentation and a changeset are included where needed.

@@ -37,20 +37,17 @@ pnpm format:check
 
 `pnpm lint:fix` and `pnpm format` apply fixes. New features and bug fixes need tests (`*.spec.ts` under `src/tests/`). Changelog-worthy work also needs a changeset (see `.cursor/rules/090-changesets.mdc`).
 
-## AI-Assisted Contributions
+## Before opening a pull request
 
-We encourage the use of AI tools to help you contribute — we use them ourselves (our Cursor config is in the repo!). Please review our [AI Policy](./AI_POLICY.md) for the full details, but the essentials are:
+Link the issue or discussion your change addresses. For new work or refactors, discuss the approach with the maintainers first.
 
-1. **You own your code.** Understand and be able to explain everything you submit.
-2. **Disclose significant AI usage** in your PR description.
-3. **PRs must address real issues.** No drive-by AI-generated refactors or bug reports.
-4. **Quality is what matters.** Good code is good code, regardless of how it was written.
+Review and test your changes before submitting them. If you used AI beyond autocomplete or minor editing, include a short disclosure in the PR description. See the [AI Policy](AI_POLICY.md) for details.
 
-By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities through [SECURITY.md](SECURITY.md), not a public issue.
+Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities through [SECURITY.md](SECURITY.md).
 
 ## Add a new harness
 
-Grep, FTS5, and semantic search come for free. Do not put search code in the adapter.
+Adapters convert provider transcripts into the shared message format. Search is handled by the search package.
 
 1. Add one file in `packages/adapters/src/` that calls `defineJsonlAdapter` with `{ id, displayName, root, sessionFiles, sessionIdFromPath, lineSchema, toMessage }`.
 2. Add the adapter to `allAdapters` in `packages/adapters/src/index.ts`.
@@ -82,7 +79,7 @@ Optional: `titleFromLine`, `cwdFromLine`, `timestampFromLine`.
 
 Unrecognized shapes are skipped. Invalid JSON and throws inside `toMessage` increment `session.parseErrors`.
 
-Anti-slop: schema-driven parsing only. No `unknown` parameters, no `typeof` guards, no `Record<string, unknown>` bags.
+Use schema-driven parsing. Do not use `unknown` parameters, `typeof` guards, or `Record<string, unknown>` objects.
 
 ### Tests
 

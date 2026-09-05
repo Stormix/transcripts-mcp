@@ -79,7 +79,15 @@ function sections(): LegalSection[] {
     {
       id: "retention",
       title: copy.retention.title,
-      content: <LegalParagraph>{copy.retention.body}</LegalParagraph>,
+      content: (
+        <LegalParagraph>
+          {copy.retention.body} See{" "}
+          <LegalLink href="https://www.cloudflare.com/privacypolicy/">
+            Cloudflare's privacy policy
+          </LegalLink>{" "}
+          for its retention criteria.
+        </LegalParagraph>
+      ),
     },
     {
       id: "your-rights",
