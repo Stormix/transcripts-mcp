@@ -4,5 +4,5 @@
     "types": ["node", "bun"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts", "**/*.bench.ts"]
 }
