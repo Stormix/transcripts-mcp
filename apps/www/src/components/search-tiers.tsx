@@ -1,45 +1,31 @@
-import { Badge } from "@/components/ui/badge";
 import { searchTiers } from "@/lib/site";
 
 import { Container } from "./container";
 
 export function SearchTiers() {
   return (
-    <section id="search" className="bg-ink-sunken">
-      <Container className="flex flex-col gap-[52px] py-[100px]">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <h2 className="max-w-[640px] font-display text-[42px] leading-[1.1] font-semibold tracking-[-0.03em] text-paper">
-            Grep works immediately. Ranked search needs an index.
+    <section id="search" className="bg-ink">
+      <Container className="py-16 lg:py-24">
+        <div className="mb-10 grid gap-5 lg:grid-cols-2 lg:gap-20">
+          <h2 className="font-display text-4xl leading-[1.1] font-semibold tracking-[-0.03em] sm:text-5xl">
+            Start with a search.
           </h2>
-          <p className="max-w-[280px] font-body text-sm text-faint lg:text-right">
-            Start with grep. Index when you want ranking or filters.
+          <p className="max-w-[48ch] text-base leading-relaxed text-soft">
+            Grep works as soon as you connect. Build an index when you need ranked results or search
+            by meaning.
           </p>
         </div>
-        <div className="flex flex-col">
+        <dl>
           {searchTiers.map((tier) => (
             <div
               key={tier.index}
-              className="flex flex-col gap-6 border-t border-line-soft py-7 lg:flex-row lg:items-start lg:gap-10"
+              className="grid gap-3 border-t border-line py-7 md:grid-cols-[1fr_2fr] md:gap-12"
             >
-              <span className="font-display text-[40px] leading-none font-semibold text-tier-index">
-                {tier.index}
-              </span>
-              <div className="flex w-[220px] shrink-0 flex-col gap-[7px]">
-                <h3 className="font-display text-[21px] font-semibold text-paper">{tier.name}</h3>
-                <p className="font-mono text-[12.5px] text-coral">{tier.api}</p>
-              </div>
-              <p className="min-w-0 flex-1 font-body text-[15px] leading-relaxed text-soft">
-                {tier.desc}
-              </p>
-              <Badge
-                variant="secondary"
-                className="rounded-full border-transparent bg-ink-raised px-[11px] py-1.5 font-mono text-[11.5px] font-normal text-soft"
-              >
-                {tier.badge}
-              </Badge>
+              <dt className="font-display text-2xl font-medium">{tier.name}</dt>
+              <dd className="max-w-[65ch] text-base leading-relaxed text-soft">{tier.desc}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       </Container>
     </section>
   );

@@ -1,7 +1,6 @@
 import { ReactLenis, useLenis } from "lenis/react";
 import { useEffect } from "react";
 
-import { Closing } from "./components/closing";
 import { FaqPage } from "./components/faq-page";
 import { Hero } from "./components/hero";
 import { HowItWorks } from "./components/how-it-works";
@@ -78,10 +77,9 @@ function Home() {
     <>
       <Hero />
       <HowItWorks />
+      <Install />
       <SearchTiers />
       <ToolsTable />
-      <Install />
-      <Closing />
     </>
   );
 }

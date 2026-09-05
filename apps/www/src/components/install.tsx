@@ -23,27 +23,28 @@ export function Install() {
       <Container className="flex flex-col gap-[72px] py-[100px] lg:flex-row">
         <div className="flex w-full max-w-[520px] flex-col gap-5">
           <h2 className="font-display text-[42px] leading-[1.1] font-semibold tracking-[-0.03em] text-paper">
-            Add it to a client.
+            Find your next answer in an old session.
           </h2>
           <p className="max-w-[460px] font-body text-base leading-relaxed text-soft">
-            Cursor and VS Code open an install prompt. Everyone else copies a command or a config
-            block. npx fetches the package on the first run.
+            Choose your client to install or copy its configuration.
           </p>
           <div className="flex flex-col pt-4">
-            {installClients.map((client) => (
-              <ClientRow
-                key={client.id}
-                client={client}
-                selected={selected}
-                copied={copiedId === client.id}
-                onSelect={setSelected}
-                onCopied={setCopiedId}
-              />
-            ))}
+            {installClients
+              .filter((client) => client.action !== "remote-note")
+              .map((client) => (
+                <ClientRow
+                  key={client.id}
+                  client={client}
+                  selected={selected}
+                  copied={copiedId === client.id}
+                  onSelect={setSelected}
+                  onCopied={setCopiedId}
+                />
+              ))}
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-5 lg:sticky lg:top-8 lg:self-start">
           <div className="overflow-hidden rounded-xl bg-ink">
             <div className="flex items-center gap-2.5 px-4 py-3">
               {active.snippetKind === "cli" ? (
@@ -54,7 +55,10 @@ export function Install() {
               <span className="flex-1 truncate font-mono text-xs text-soft">{active.path}</span>
               <CopyButton value={active.copyValue} />
             </div>
-            <pre className="overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]">
+            <pre
+              key={selected}
+              className="config-snippet overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]"
+            >
               <Snippet kind={active.snippetKind} value={active.copyValue} />
             </pre>
           </div>
