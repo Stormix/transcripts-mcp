@@ -3,7 +3,6 @@
   "plugins": ["typescript", "import", "promise"],
   "jsPlugins": ["@transcripts-mcp/oxlint-plugins/anti-slop"],
   "env": {
-    "browser": true,
     "node": true,
     "es2024": true
   },
@@ -31,23 +30,7 @@
     "anti-slop/no-object-parameters": "warn",
     "anti-slop/no-shape-in-symbol-names": "warn"
   },
-  "ignorePatterns": [
-    ".next",
-    "dist",
-    ".turbo",
-    "dev-dist",
-    ".zed",
-    ".vscode",
-    "routeTree.gen.ts",
-    "src-tauri",
-    ".nuxt",
-    "bts.jsonc",
-    ".expo",
-    ".wrangler",
-    ".alchemy",
-    "wrangler.jsonc",
-    ".source"
-  ],
+  "ignorePatterns": ["dist", ".turbo", "coverage"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",

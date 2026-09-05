@@ -22,7 +22,7 @@
     "descriptionWithDot": false
   },
   "sortImports": {
-    "internalPattern": ["@transcripts-mcp/", "~/", "@/", "#"],
+    "internalPattern": ["@transcripts-mcp/"],
     "newlinesBetween": true,
     "groups": [
       ["type-builtin", "type-external"],
@@ -37,22 +37,5 @@
     ]
   },
   "sortPackageJson": true,
-  "sortTailwindcss": {
-    "functions": ["clsx", "cn", "cva", "tw"]
-  },
-  "ignorePatterns": [
-    ".next",
-    "dist",
-    ".turbo",
-    "dev-dist",
-    "coverage",
-    "pnpm-lock.yaml",
-    "routeTree.gen.ts",
-    "src-tauri",
-    ".nuxt",
-    ".expo",
-    ".wrangler",
-    ".alchemy",
-    ".source"
-  ]
+  "ignorePatterns": ["dist", ".turbo", "coverage", "pnpm-lock.yaml"]
 }
