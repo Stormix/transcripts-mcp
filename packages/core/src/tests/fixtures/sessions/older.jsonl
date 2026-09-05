@@ -1,0 +1,2 @@
+{"type":"msg","text":"older first","role":"user","title":"Older session","cwd":"/tmp/older","timestamp":"2024-01-01T00:00:00.000Z"}
+{"type":"msg","text":"older last","role":"assistant","timestamp":"2024-01-01T01:00:00.000Z"}

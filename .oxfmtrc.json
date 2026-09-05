@@ -1,0 +1,58 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "jsxSingleQuote": false,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "endOfLine": "lf",
+  "insertFinalNewline": true,
+  "quoteProps": "as-needed",
+  "objectWrap": "preserve",
+  "singleAttributePerLine": false,
+  "embeddedLanguageFormatting": "auto",
+  "proseWrap": "preserve",
+  "jsdoc": {
+    "addDefaultToDescription": false,
+    "descriptionWithDot": false
+  },
+  "sortImports": {
+    "internalPattern": ["@transcripts-mcp/", "~/", "@/", "#"],
+    "newlinesBetween": true,
+    "groups": [
+      ["type-builtin", "type-external"],
+      ["type-internal", "type-subpath"],
+      ["type-parent", "type-sibling", "type-index"],
+      "builtin",
+      "external",
+      ["internal", "subpath"],
+      ["parent", "sibling", "index"],
+      "style",
+      "unknown"
+    ]
+  },
+  "sortPackageJson": true,
+  "sortTailwindcss": {
+    "functions": ["clsx", "cn", "cva", "tw"]
+  },
+  "ignorePatterns": [
+    ".next",
+    "dist",
+    ".turbo",
+    "dev-dist",
+    "coverage",
+    "pnpm-lock.yaml",
+    "routeTree.gen.ts",
+    "src-tauri",
+    ".nuxt",
+    ".expo",
+    ".wrangler",
+    ".alchemy",
+    ".source"
+  ]
+}

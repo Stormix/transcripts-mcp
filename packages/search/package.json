@@ -1,0 +1,27 @@
+{
+  "name": "@transcripts-mcp/search",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./fts": "./src/fts.ts",
+    "./semantic": "./src/semantic.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run --config ../../vitest.config.ts"
+  },
+  "dependencies": {
+    "@ff-labs/fff-bun": "^0.10.6",
+    "@huggingface/transformers": "^3.8.1",
+    "@transcripts-mcp/core": "workspace:*",
+    "sqlite-vec": "^0.1.9",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@transcripts-mcp/typescript-config": "workspace:*",
+    "@types/bun": "^1.3.9",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

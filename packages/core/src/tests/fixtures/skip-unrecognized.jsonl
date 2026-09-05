@@ -1,0 +1,4 @@
+{"type":"msg","text":"hello from user","role":"user"}
+{"type":"system_event","event":"ping"}
+{"not":"valid"}
+{"type":"msg","text":"reply from assistant","role":"assistant"}

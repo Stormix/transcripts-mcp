@@ -1,0 +1,27 @@
+{
+  "name": "@transcripts-mcp/oxlint-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "src/"
+  ],
+  "type": "module",
+  "main": "src/plugins/anti-slop/index.ts",
+  "exports": {
+    ".": "./src/plugins/anti-slop/index.ts",
+    "./anti-slop": "./src/plugins/anti-slop/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit --skipLibCheck",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix . --quiet"
+  },
+  "dependencies": {
+    "@oxlint/plugins": "catalog:"
+  },
+  "devDependencies": {
+    "@transcripts-mcp/typescript-config": "workspace:*",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

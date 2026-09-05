@@ -1,0 +1,4 @@
+{"timestamp":"2026-02-24T18:37:48.752Z","type":"session_meta","payload":{"session_id":"cccccccc-dddd-4eee-8fff-000000000000","cwd":"/tmp/demo"}}
+{"timestamp":"2026-02-24T18:37:49.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hello world"}]}}
+{"timestamp":"2026-02-24T18:37:50.000Z","type":"event_msg","payload":{"type":"task_started"}}
+{"timestamp":"2026-02-24T18:37:51.000Z","type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"hello world"}]}}

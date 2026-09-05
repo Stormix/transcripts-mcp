@@ -1,0 +1,46 @@
+{
+  "name": "transcripts-mcp",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "test": "vitest run",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "upgrade:deps": "pnpm dlx taze major -r -w",
+    "changeset": "changeset",
+    "start": "pnpm --filter @transcripts-mcp/mcp start",
+    "preinstall": "node scripts/preinstall.ts"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@transcripts-mcp/oxlint-plugins": "workspace:*",
+    "@types/node": "catalog:",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "turbo": "^2.10.9",
+    "typescript": "catalog:",
+    "vitest": "^4.1.10"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "oxlint --fix",
+      "oxfmt"
+    ]
+  },
+  "engines": {
+    "bun": ">=1.2.0",
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@11.21.0"
+}

@@ -1,0 +1,22 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+
+catalog:
+  "@oxlint/plugins": ^1.78.0
+  "@types/node": ^26.2.0
+  typescript: ^7.0.2
+  oxlint: ^1.78.0
+  oxfmt: ^0.63.0
+  zod: ^4.4.3
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  msgpackr-extract: true
+  protobufjs: true
+  "@ff-labs/fff-bin-win32-x64": true
+  "@ff-labs/fff-bun": true
+  sqlite-vec: true
+  onnxruntime-node: true
+  sharp: true

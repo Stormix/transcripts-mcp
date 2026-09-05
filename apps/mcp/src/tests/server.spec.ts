@@ -1,0 +1,101 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
+
+import { McpServer } from "@modelcontextprotocol/server";
+import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
+
+import { createRegistry, defineJsonlAdapter } from "@transcripts-mcp/core";
+
+import { toolNames } from "../tool-names.ts";
+import { getTranscript } from "../tools/get-transcript.ts";
+import { listProviders } from "../tools/list-providers.ts";
+import { listSessions, registerListSessions } from "../tools/list-sessions.ts";
+
+const lineSchema = z.object({
+  role: z.enum(["user", "assistant", "system"]),
+  text: z.string(),
+});
+
+const roots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+describe("createServer", () => {
+  it("should expose the six transcript tools when the server is wired", () => {
+    const registry = createRegistry();
+    const server = new McpServer({ name: "transcripts-mcp", version: "0.0.0" });
+    registerListSessions(server, registry);
+    expect(server).toBeInstanceOf(McpServer);
+    expect(toolNames).toEqual([
+      "list_providers",
+      "list_sessions",
+      "get_transcript",
+      "grep_transcripts",
+      "search_transcripts",
+      "build_index",
+    ]);
+  });
+
+  it("should return a session summary when list_sessions is invoked with a fake registry", async () => {
+    const { registry, sessionId } = await createFakeRegistry();
+    const sessions = await listSessions(registry, { limit: 10 });
+    expect(sessions).toHaveLength(1);
+    const session = sessions[0];
+    expect(session?.id).toBe(sessionId);
+    expect(session?.provider).toBe("fake");
+    expect(session?.title).toBe("hello from user");
+  });
+
+  it("should cap messages when get_transcript exceeds the limit", async () => {
+    const { registry, sessionId } = await createFakeRegistry();
+    const session = await getTranscript(registry, {
+      provider: "fake",
+      id: sessionId,
+      limit: 1,
+    });
+    expect(session.messages).toHaveLength(1);
+    expect(session.messageCount).toBe(2);
+    expect(session.messages[0]?.text).toBe("hello from user");
+  });
+
+  it("should report availability and a session count when list_providers walks a fake root", async () => {
+    const { registry } = await createFakeRegistry();
+    const providers = await listProviders(registry);
+    expect(providers).toEqual([
+      {
+        id: "fake",
+        displayName: "Fake",
+        available: true,
+        sessionCount: 1,
+      },
+    ]);
+  });
+});
+
+async function createFakeRegistry() {
+  const root = await mkdtemp(join(tmpdir(), "transcripts-mcp-"));
+  roots.push(root);
+
+  const sessionId = "sess-1";
+  await writeFile(
+    join(root, `${sessionId}.jsonl`),
+    `${JSON.stringify({ role: "user", text: "hello from user" })}\n${JSON.stringify({ role: "assistant", text: "reply from assistant" })}\n`,
+  );
+
+  const adapter = defineJsonlAdapter({
+    id: "fake",
+    displayName: "Fake",
+    root: () => root,
+    sessionFiles: "*.jsonl",
+    sessionIdFromPath: (filePath) => basename(filePath, ".jsonl"),
+    lineSchema,
+    toMessage: (line) => ({ role: line.role, text: line.text }),
+    titleFromLine: (line) => line.text,
+  });
+
+  return { registry: createRegistry([adapter]), sessionId };
+}

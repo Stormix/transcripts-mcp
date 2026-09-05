@@ -1,0 +1,78 @@
+---
+description: Defines the workaround process for creating and editing cursor rule files
+globs: "**/*.mdc-tmp,**/*.mdc"
+---
+
+# Cursor Rule Editing Workaround
+
+Defines the process for creating and editing cursor rule files to work around Cursor limitations.
+
+<rules>
+<filters>
+INCLUDE:
+  - type: file_extension
+    pattern: "\\.mdc(-tmp)?$"
+  - type: event
+    pattern: "(file_create|file_modify)"
+</filters>
+
+<rule>
+name: mdc-file-editing-process
+description: Enforces the workaround process for editing cursor rule files
+ENFORCE:
+  - type: process
+    steps:
+      - name: temporary_file_creation
+        description: Create or edit files with temporary extension
+        requirements:
+          - Use .mdc-tmp extension for all new or modified cursor rules
+          - Place temporary files in same location as target .mdc file
+        pattern: "^.*\\.mdc-tmp$"
+
+      - name: existing_file_modification
+        description: Process for modifying existing rules
+        requirements:
+          - Copy existing .mdc file to .mdc-tmp before ANY modifications
+          - Get user approval of the initial copy
+          - Only after approval, make edits in the temporary file
+          - Maintain original file until changes are approved
+        notes: |
+          The initial copy step and its approval are crucial for:
+          - Verifying the starting point is correct
+          - Making the subsequent changes more visible
+          - Preventing accidental loss of content
+
+      - name: file_finalization
+        description: Process for finalizing rule files
+        requirements:
+          - Review changes in temporary file
+          - Use terminal command (cp or mv) to create final .mdc file - NEVER use internal file editing tools
+          - Remove temporary file after successful creation
+        notes: |
+          Due to a known limitation, internal file editing tools cannot be used to create or modify .mdc files directly.
+          Always use terminal commands like `cp` or `mv` for the final step.
+
+examples:
+  - scenario: "Creating new rule"
+    steps:
+      - "Create: example-rule.mdc-tmp"
+      - "Get approval for initial empty file"
+      - "Edit temporary file"
+      - "Review changes"
+      - "Copy to: example-rule.mdc"
+      - "Remove temporary file"
+
+  - scenario: "Modifying existing rule"
+    steps:
+      - "Copy existing.mdc to existing.mdc-tmp"
+      - "Get approval for initial copy"
+      - "Edit temporary file"
+      - "Review changes"
+      - "Copy back to existing.mdc"
+      - "Remove temporary file"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>
+</rules> 

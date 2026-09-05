@@ -1,0 +1,4 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-08-16T15:16:16.734Z","sessionId":"bbbbbbbb-cccc-4ddd-8eee-ffffffffffff"}
+{"type":"user","timestamp":"2026-08-16T15:16:16.745Z","cwd":"/tmp/demo","sessionId":"bbbbbbbb-cccc-4ddd-8eee-ffffffffffff","message":{"role":"user","content":[{"type":"text","text":"hello world"}]}}
+{"type":"assistant","timestamp":"2026-08-16T15:16:17.000Z","cwd":"/tmp/demo","sessionId":"bbbbbbbb-cccc-4ddd-8eee-ffffffffffff","message":{"role":"assistant","content":[{"type":"text","text":"hello world"}]}}
+{"type":"attachment","uuid":"00000000-0000-4000-8000-000000000000"}

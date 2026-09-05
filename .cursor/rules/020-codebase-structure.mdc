@@ -1,0 +1,70 @@
+---
+description: Project structure, commands, and development setup guidelines for transcripts-mcp
+globs:
+alwaysApply: true
+---
+
+# Codebase Structure and Commands
+
+## Project Structure
+
+pnpm + Turborepo monorepo. Scope is `@transcripts-mcp/*`. Libraries export TypeScript source (`"exports": { ".": "./src/index.ts" }`).
+
+### Workspaces
+
+- `apps/mcp` — `@transcripts-mcp/mcp`: stdio MCP server, tool registration, adapter wiring
+- `packages/core` — `@transcripts-mcp/core`: types, `defineJsonlAdapter`, jsonl reader, registry, `walkGlob`
+- `packages/adapters` — `@transcripts-mcp/adapters`: Cursor, Claude Code, Codex (`allAdapters`)
+- `packages/search` — `@transcripts-mcp/search`: grep (fff), FTS5, optional semantic search
+- `tools/oxlint-plugins` — `@transcripts-mcp/oxlint-plugins`: custom OxLint rules (`anti-slop`)
+- `tools/typescript-config` — `@transcripts-mcp/typescript-config`: shared tsconfig
+
+`adapters` and `search` depend on `core`. `apps/mcp` depends on all three and is the only place that creates the registry from `allAdapters`. Search never imports adapters.
+
+### Config
+
+- `package.json` — root scripts and engines (`bun >= 1.2`, `node >= 24`, `pnpm@11`)
+- `pnpm-workspace.yaml` — workspaces + catalog
+- `turbo.json` — `dev`, `build`, `check-types`
+- `.oxlintrc.json` — OxLint + anti-slop
+- `.husky/` — git hooks
+- `.changeset/` — versioning
+
+## Commands
+
+Run from the repo root.
+
+```bash
+pnpm dev                    # turbo dev (apps/mcp: bun --watch src/index.ts)
+pnpm lint                   # oxlint
+pnpm lint:fix
+pnpm test                   # vitest
+pnpm check-types            # turbo tsc --noEmit
+pnpm format                 # oxfmt
+pnpm format:check
+```
+
+Launch the server:
+
+```bash
+bun apps/mcp/src/index.ts
+pnpm --filter @transcripts-mcp/mcp start
+```
+
+Filter a package: `pnpm --filter @transcripts-mcp/core check-types`. Add deps with `--filter @transcripts-mcp/<name>`. Shared versions use `catalog:`.
+
+## Runtime
+
+`apps/mcp` is a Bun stdio process. stdout is JSON-RPC; logs go to `console.error`. `packages/search/src/fts.ts` uses `bun:sqlite` and is imported by the app, not by adapters.
+
+Transcript roots: `CURSOR_HOME` (`~/.cursor`), `CLAUDE_HOME` (`~/.claude`), `CODEX_HOME` (`~/.codex`). Index path: `TRANSCRIPTS_MCP_INDEX` (`~/.transcripts-mcp/index.db`).
+
+Adding a harness: one file in `packages/adapters/src/` via `defineJsonlAdapter`, one entry in `allAdapters`, one fixture + spec. Grep, FTS5, and semantic search come for free. `walkGlob` is per-segment `*` only (no `**`).
+
+## Checks before commit
+
+```bash
+pnpm lint
+pnpm check-types
+pnpm test
+```

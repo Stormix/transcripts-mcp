@@ -1,0 +1,3 @@
+{"role":"user","text":"visible unique phrase alpha42"}
+{"envelopeOnly":true,"noise":"alpha42-raw-only-token"}
+{"role":"assistant","text":"normal reply"}

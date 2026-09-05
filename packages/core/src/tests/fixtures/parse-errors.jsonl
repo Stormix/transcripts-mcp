@@ -1,0 +1,3 @@
+{"type":"msg","text":"keep this","role":"user"}
+{"type":"msg","text":"THROW","role":"assistant"}
+{"type":"msg","text":"still keep this","role":"assistant"}
