@@ -9,3 +9,5 @@ pnpm dlx transcripts-mcp
 ```
 
 `npx` / `pnpm dlx` spawn the platform binary (native fff + FTS; no semantic). `bunx --bun` runs the bundled server in-process and can use semantic/hybrid. If the binary is missing, the shim looks for `bun` on PATH.
+
+Docs, config, and contributing: [github.com/Stormix/transcripts-mcp](https://github.com/Stormix/transcripts-mcp)

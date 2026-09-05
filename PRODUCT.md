@@ -52,7 +52,7 @@ Confirmed facts future work must not contradict:
 - Semantic/hybrid search only works when the server runs under Bun; the npx platform binary cannot embed `sqlite-vec` or the ONNX engine.
 - MIT licensed.
 
-Undecided: other harnesses, public npm, pricing, hosted anything.
+Undecided: other harnesses, pricing, hosted anything.
 
 ## Brand Commitments
 

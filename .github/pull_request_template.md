@@ -33,7 +33,7 @@ Brief description of the changes introduced by this PR.
 
 ## Checklist
 
-- [ ] I have read the [Contributing Guidelines](./CONTRIBUTING.md) and [AI Policy](./AI_POLICY.md)
+- [ ] I have read the [Contributing Guidelines](CONTRIBUTING.md), [AI Policy](AI_POLICY.md), and [Code of Conduct](CODE_OF_CONDUCT.md)
 - [ ] My code follows the style guidelines of this project (`pnpm lint` passes)
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in hard-to-understand areas

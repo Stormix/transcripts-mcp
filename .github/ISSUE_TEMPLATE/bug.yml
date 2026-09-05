@@ -1,0 +1,63 @@
+name: Bug
+description: Something does not work the way the docs say it should
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You must have reproduced this yourself. AI-generated bug reports that have not been verified will be closed. See the [AI Policy](https://github.com/Stormix/transcripts-mcp/blob/main/AI_POLICY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got.
+    validations:
+      required: true
+  - type: dropdown
+    id: how-installed
+    attributes:
+      label: How you run the server
+      options:
+        - npx transcripts-mcp
+        - bunx --bun transcripts-mcp
+        - pnpm dlx transcripts-mcp
+        - From source (bun apps/mcp/src/index.ts)
+        - Cursor plugin
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Package version (`transcripts-mcp@x.y.z`) or git commit.
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - Cursor
+        - Claude Code
+        - Codex
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant stderr output. Do not paste transcript contents that include secrets.
+      render: text

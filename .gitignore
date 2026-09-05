@@ -6,6 +6,7 @@ dist
 .DS_Store
 coverage
 .cursor/mcp.json
+.cursor/hooks/state/
 .tmp-compile
 .npmrc
 .wrangler

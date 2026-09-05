@@ -179,7 +179,7 @@ From-source MCP config uses an absolute path to `apps/mcp/src/index.ts`. Windows
 - `packages/search` — grep (fff), FTS5, optional semantic search
 - `distribution/plugin` — Cursor Plugin manifest, skill, and `mcp.json`
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to add a harness. AI-assisted contributions are welcome; read the [AI Policy](AI_POLICY.md) first.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to add a harness. AI-assisted contributions are welcome; read the [AI Policy](AI_POLICY.md) first. Security reports go through [SECURITY.md](SECURITY.md). Conduct is in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 

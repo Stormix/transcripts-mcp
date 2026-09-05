@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Stormix/transcripts-mcp/security/advisories/new
+    about: Report a vulnerability privately. Do not open a public issue.
+  - name: AI Policy
+    url: https://github.com/Stormix/transcripts-mcp/blob/main/AI_POLICY.md
+    about: Drive-by AI-generated issues will be closed.
