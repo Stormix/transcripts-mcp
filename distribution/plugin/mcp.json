@@ -2,7 +2,7 @@
   "mcpServers": {
     "transcripts": {
       "command": "npx",
-      "args": ["-y", "transcripts-mcp@0.0.2"]
+      "args": ["-y", "transcripts-mcp@0.0.3"]
     }
   }
 }
