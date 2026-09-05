@@ -1,8 +1,8 @@
 {
-  "name": "@stormix/transcripts-mcp",
-  "version": "0.0.0",
+  "name": "transcripts-mcp",
+  "version": "0.0.2",
   "private": false,
-  "description": "Local stdio MCP server for Cursor, Claude Code, and Codex session transcripts.",
+  "description": "Search local Cursor, Claude Code, and Codex session transcripts via MCP",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -18,7 +18,8 @@
   ],
   "type": "module",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "scripts": {
     "build": "bun ../../scripts/build-cli.ts --bundle-only",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@transcripts-mcp/typescript-config": "workspace:*",
+    "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   },

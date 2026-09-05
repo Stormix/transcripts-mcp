@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
-const versionSchema = z.object({ version: z.string() });
+const cliPackageSchema = z.object({ name: z.string(), version: z.string() });
 const pluginSchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -19,13 +19,14 @@ const pluginSchema = z.object({
   variables: z
     .object({
       type: z.literal("object"),
-      properties: z.object({
-        GITHUB_TOKEN: z.object({
+      properties: z.record(
+        z.string(),
+        z.object({
           type: z.literal("string"),
           title: z.string(),
           description: z.string(),
         }),
-      }),
+      ),
       required: z.array(z.string()),
     })
     .optional(),
@@ -41,9 +42,11 @@ const mcpSchema = z.object({
 });
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const version = versionSchema.parse(
+const cliPackage = cliPackageSchema.parse(
   JSON.parse(await readFile(join(repoRoot, "packages", "cli", "package.json"), "utf8")),
-).version;
+);
+const version = cliPackage.version;
+const pinnedPrefix = `${cliPackage.name}@`;
 
 const pluginPath = join(repoRoot, "distribution", "plugin", ".cursor-plugin", "plugin.json");
 const plugin = pluginSchema.parse(JSON.parse(await readFile(pluginPath, "utf8")));
@@ -53,7 +56,7 @@ await writeFile(pluginPath, `${JSON.stringify(plugin, null, 2)}\n`);
 const mcpPath = join(repoRoot, "distribution", "plugin", "mcp.json");
 const mcp = mcpSchema.parse(JSON.parse(await readFile(mcpPath, "utf8")));
 mcp.mcpServers.transcripts.args = mcp.mcpServers.transcripts.args.map((arg) =>
-  arg.startsWith("@stormix/transcripts-mcp@") ? `@stormix/transcripts-mcp@${version}` : arg,
+  arg.startsWith(pinnedPrefix) ? `${pinnedPrefix}${version}` : arg,
 );
 await writeFile(mcpPath, `${JSON.stringify(mcp, null, 2)}\n`);
 

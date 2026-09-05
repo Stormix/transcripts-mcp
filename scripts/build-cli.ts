@@ -18,8 +18,10 @@ const packageSchema = z.object({
   }),
   bin: z.record(z.string(), z.string()),
   files: z.array(z.string()),
+  type: z.literal("module"),
   publishConfig: z.object({
     registry: z.string(),
+    access: z.string(),
   }),
   engines: z.object({
     node: z.string(),
@@ -51,6 +53,11 @@ await writeFile(serverOut, patched);
 
 const cliBundle = await Bun.$`bun build ${cliEntry} --outfile ${cliOut} --target node`.text();
 process.stderr.write(cliBundle);
+const cliSource = await readFile(cliOut, "utf8");
+const shebang = "#!/usr/bin/env node\n";
+if (!cliSource.startsWith(shebang)) {
+  await writeFile(cliOut, `${shebang}${cliSource}`);
+}
 await writePublishManifest(pkg);
 
 if (bundleOnly) {
@@ -104,7 +111,7 @@ async function writePlatformPackage(target: CliTarget, version: string): Promise
         os: [target.platform],
         cpu: [target.arch],
         files: [target.binaryFile],
-        publishConfig: { registry: "https://npm.pkg.github.com" },
+        publishConfig: pkg.publishConfig,
         repository: pkg.repository,
       },
       null,

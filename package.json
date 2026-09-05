@@ -1,5 +1,5 @@
 {
-  "name": "transcripts-mcp",
+  "name": "@transcripts-mcp/workspace",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -20,12 +20,14 @@
     "upgrade:deps": "pnpm dlx taze major -r -w",
     "changeset": "changeset",
     "start": "pnpm --filter @transcripts-mcp/mcp start",
+    "deploy:www": "pnpm --filter @transcripts-mcp/www run deploy",
     "build:cli": "bun scripts/build-cli.ts",
     "sync:plugin-version": "bun scripts/sync-plugin-version.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
     "@transcripts-mcp/oxlint-plugins": "workspace:*",
+    "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
@@ -37,7 +39,7 @@
     "zod": "catalog:"
   },
   "lint-staged": {
-    "*.{js,ts,mjs,cjs}": [
+    "*.{js,ts,tsx,mjs,cjs}": [
       "oxlint --fix",
       "oxfmt"
     ]

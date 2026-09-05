@@ -5,7 +5,7 @@ import { hostTarget, targetFor } from "../targets.ts";
 describe("cli targets", () => {
   it("should map win32-x64 to the windows bun compile target", () => {
     const target = hostTarget("win32", "x64");
-    expect(target.packageName).toBe("@stormix/transcripts-mcp-win32-x64");
+    expect(target.packageName).toBe("transcripts-mcp-win32-x64");
     expect(target.bunTarget).toBe("bun-windows-x64");
     expect(target.binaryFile).toBe("transcripts-mcp.exe");
   });

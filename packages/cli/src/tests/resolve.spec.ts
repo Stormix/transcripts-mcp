@@ -14,16 +14,14 @@ describe("cli resolve", () => {
   });
 
   it("should join the platform package directory with the binary file name", () => {
-    const path = optionalBinaryPath(
-      "@stormix/transcripts-mcp-win32-x64",
-      "transcripts-mcp.exe",
-      () => join("/pkg", "package.json"),
+    const path = optionalBinaryPath("transcripts-mcp-win32-x64", "transcripts-mcp.exe", () =>
+      join("/pkg", "package.json"),
     );
     expect(path).toBe(join("/pkg", "transcripts-mcp.exe"));
   });
 
   it("should return undefined when the platform package cannot be resolved", () => {
-    const path = optionalBinaryPath("@stormix/missing", "transcripts-mcp", () => {
+    const path = optionalBinaryPath("transcripts-mcp-missing", "transcripts-mcp", () => {
       throw new Error("not installed");
     });
     expect(path).toBeUndefined();

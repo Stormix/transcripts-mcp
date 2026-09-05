@@ -1,23 +1,12 @@
 {
   "name": "transcripts-mcp",
   "description": "Search local Cursor, Claude Code, and Codex session transcripts via MCP.",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "author": {
     "name": "Stormix"
   },
   "keywords": ["transcripts", "mcp", "cursor", "claude", "codex"],
   "license": "MIT",
   "logo": "assets/logo.svg",
-  "repository": "https://github.com/Stormix/transcripts-mcp",
-  "variables": {
-    "type": "object",
-    "properties": {
-      "GITHUB_TOKEN": {
-        "type": "string",
-        "title": "GitHub token",
-        "description": "Token with read:packages for https://npm.pkg.github.com (scope @stormix)."
-      }
-    },
-    "required": ["GITHUB_TOKEN"]
-  }
+  "repository": "https://github.com/Stormix/transcripts-mcp"
 }

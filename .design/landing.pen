@@ -3819,6 +3819,124 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "DQlwa",
+      "x": 1520,
+      "y": 0,
+      "name": "OG Card",
+      "clip": true,
+      "width": 1200,
+      "height": 630,
+      "fill": "$ink",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": [
+        88,
+        96
+      ],
+      "justifyContent": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "SyO3f",
+          "name": "Brand",
+          "gap": 14,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "q2I9RJ",
+              "name": "Logo Mark",
+              "width": 28,
+              "height": 28,
+              "fill": "$paper",
+              "cornerRadius": 7,
+              "layout": "vertical",
+              "gap": 3.5,
+              "padding": [
+                0,
+                7
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "P2K0gR",
+                  "name": "Line 1",
+                  "fill": "$ink",
+                  "width": "fill_container",
+                  "height": 2.5
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "NYeWD",
+                  "name": "Line 2",
+                  "fill": "$coral",
+                  "width": "fill_container",
+                  "height": 2.5
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "uGcKS",
+                  "name": "Line 3",
+                  "fill": "$ink",
+                  "width": 10,
+                  "height": 2.5
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Hh9oZ",
+              "name": "Wordmark",
+              "fill": "$paper",
+              "content": "transcripts-mcp",
+              "fontFamily": "$font-mono",
+              "fontSize": 18,
+              "fontWeight": "500"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "RzOud",
+          "name": "Headline",
+          "fill": "$paper",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Search your Cursor, Claude Code, and Codex sessions.",
+          "lineHeight": 1.08,
+          "fontFamily": "$font-display",
+          "fontSize": 52,
+          "fontWeight": "600",
+          "letterSpacing": -1.6
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 2,
+          "id": "mkADW",
+          "name": "Accent",
+          "fill": "$coral",
+          "width": 72,
+          "height": 3
+        },
+        {
+          "type": "text",
+          "id": "OZwDK",
+          "name": "Providers",
+          "fill": "$dim",
+          "content": "cursor  ·  claude-code  ·  codex",
+          "fontFamily": "$font-mono",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        }
+      ]
     }
   ],
   "variables": {

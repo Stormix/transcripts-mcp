@@ -6,8 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
   bundle:
@@ -94,9 +93,12 @@ jobs:
           path: packages/cli/dist/platforms/${{ matrix.only }}
 
   publish:
-    name: Publish GitHub Packages
+    name: Publish to npm
     needs: [bundle, compile]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -105,8 +107,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://npm.pkg.github.com
-          scope: "@stormix"
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1 to perform the OIDC exchange.
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Download bundle
         uses: actions/download-artifact@v4
@@ -144,26 +149,24 @@ jobs:
           name: cli-darwin-x64
           path: packages/cli/dist/platforms/darwin-x64
 
+      # No NODE_AUTH_TOKEN: npm only falls back to OIDC when it finds no token.
+      # Access and registry come from each package's publishConfig.
       - name: Publish platform packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           for dir in packages/cli/dist/platforms/*; do
-            npm publish "$dir" --access restricted
+            npm publish "$dir"
           done
 
       - name: Publish main package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          stage=$(mktemp -d)
-          cp packages/cli/dist/publish-package.json "$stage/package.json"
+          stage=packages/cli/dist/stage
           mkdir -p "$stage/dist"
+          cp packages/cli/dist/publish-package.json "$stage/package.json"
           cp packages/cli/dist/cli.js packages/cli/dist/server.js "$stage/dist/"
           cp packages/cli/README.md "$stage/"
-          npm publish "$stage" --access restricted
+          npm publish "$stage"
 
       - name: Attach binaries to GitHub Release
         uses: softprops/action-gh-release@v2

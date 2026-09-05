@@ -8,3 +8,6 @@ coverage
 .cursor/mcp.json
 .tmp-compile
 .npmrc
+.wrangler
+.dev.vars*
+.design/exports/preview/*

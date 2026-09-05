@@ -45,8 +45,7 @@ async function main(): Promise<void> {
   const target = hostTarget(process.platform, process.arch);
   console.error(
     `transcripts-mcp: no ${target.packageName} binary and bun is not on PATH. ` +
-      `Install Bun, or install ${target.packageName} from GitHub Packages ` +
-      `(registry https://npm.pkg.github.com, scope @stormix).`,
+      `Install Bun, or install ${target.packageName} from npm.`,
   );
   process.exit(1);
 }

@@ -53,6 +53,14 @@ bun apps/mcp/src/index.ts
 pnpm --filter @transcripts-mcp/mcp start
 ```
 
+Deploy the marketing site to Cloudflare:
+
+```bash
+pnpm deploy:www
+```
+
+`deploy` is a reserved pnpm command, so `pnpm --filter @transcripts-mcp/www deploy` fails. Use the root script, or `pnpm --filter @transcripts-mcp/www run deploy`.
+
 Filter a package: `pnpm --filter @transcripts-mcp/core check-types`. Add deps with `--filter @transcripts-mcp/<name>`. Shared versions use `catalog:`.
 
 ## Runtime

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --ink: #171615;
+  --ink-raised: #1e1d1b;
+  --ink-sunken: #121110;
+  --line: #2e2c28;
+  --line-soft: #242320;
+  --paper: #f4f1ea;
+  --soft: #a19d95;
+  --faint: #6c6862;
+  --coral: #ff6b4a;
+  --tier-index: #3f3c37;
+  --background: var(--ink);
+  --foreground: var(--paper);
+  --card: var(--ink-raised);
+  --card-foreground: var(--paper);
+  --popover: var(--ink-raised);
+  --popover-foreground: var(--paper);
+  --primary: var(--coral);
+  --primary-foreground: var(--ink);
+  --secondary: var(--ink-raised);
+  --secondary-foreground: var(--paper);
+  --muted: var(--ink-raised);
+  --muted-foreground: var(--soft);
+  --accent: var(--ink-raised);
+  --accent-foreground: var(--paper);
+  --destructive: var(--coral);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--coral);
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-ink-sunken: var(--ink-sunken);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-paper: var(--paper);
+  --color-soft: var(--soft);
+  --color-faint: var(--faint);
+  --color-coral: var(--coral);
+  --color-tier-index: var(--tier-index);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    background-color: var(--ink);
+    color: var(--paper);
+  }
+
+  .font-display {
+    font-family: "Inter Tight", "Inter", sans-serif;
+  }
+
+  .font-body {
+    font-family: "Inter", sans-serif;
+  }
+
+  .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+  }
+}

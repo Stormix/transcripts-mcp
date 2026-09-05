@@ -46,6 +46,23 @@
       }
     },
     {
+      "files": ["apps/www/**"],
+      "env": {
+        "browser": true,
+        "node": false
+      },
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
+      "files": ["apps/www/vite.config.ts"],
+      "env": {
+        "node": true,
+        "browser": false
+      }
+    },
+    {
       "files": ["scripts/**"],
       "rules": {
         "no-console": "off",

@@ -6,6 +6,7 @@ packages:
 
 catalog:
   "@oxlint/plugins": ^1.78.0
+  "@types/bun": ^1.3.9
   "@types/node": ^26.2.0
   typescript: ^7.0.2
   oxlint: ^1.78.0
@@ -21,3 +22,4 @@ allowBuilds:
   sqlite-vec: true
   onnxruntime-node: true
   sharp: true
+  workerd: true
