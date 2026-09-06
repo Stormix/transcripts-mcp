@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { readJsonlLinesAt } from "@transcripts-mcp/core";
 
-import { grepTranscripts, isGrepAvailable } from "../grep.ts";
+import { closeGrepFinders, grepTranscripts, isGrepAvailable } from "../grep.ts";
 import { normalizeCandidates } from "../normalize.ts";
 import { scanGrep } from "../scan.ts";
 import {
@@ -19,6 +19,7 @@ describe("grep transcripts", () => {
   const roots: string[] = [];
 
   afterEach(async () => {
+    await closeGrepFinders();
     await Promise.all(roots.splice(0).map((root) => removeFixtureRoot(root)));
   });
 
@@ -142,6 +143,26 @@ describe("grep transcripts", () => {
     );
     expect(reads).toEqual([path]);
     expect(hits).toHaveLength(3);
+  });
+
+  it("should keep results isolated when registries use the same provider with different roots", async () => {
+    const firstRoot = await createFixtureRoot();
+    const secondRoot = await createFixtureRoot();
+    roots.push(firstRoot, secondRoot);
+    await writeSession(firstRoot, "first", [messageLine("user", "root-token first")]);
+    await writeSession(secondRoot, "second", [messageLine("user", "root-token second")]);
+    const firstRegistry = createFixtureRegistry(firstRoot);
+    const secondRegistry = createFixtureRegistry(secondRoot);
+    const query = { query: "root-token" };
+    expect((await grepTranscripts(firstRegistry, query)).map((hit) => hit.sessionId)).toEqual([
+      "first",
+    ]);
+    expect((await grepTranscripts(secondRegistry, query)).map((hit) => hit.sessionId)).toEqual([
+      "second",
+    ]);
+    expect((await grepTranscripts(firstRegistry, query)).map((hit) => hit.sessionId)).toEqual([
+      "first",
+    ]);
   });
 
   it("should report a boolean when grep availability is probed", () => {
