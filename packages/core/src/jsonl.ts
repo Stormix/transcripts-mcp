@@ -1,7 +1,7 @@
 import type { ZodType } from "zod";
 
 import { createReadStream } from "node:fs";
-import { open } from "node:fs/promises";
+import { open, type FileHandle } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
 const LINE_CHUNK_BYTES = 64 * 1024;
@@ -67,6 +67,53 @@ export async function readJsonlLinesAt(
     if (found.size === wanted.size) return found;
   }
   return found;
+}
+
+export interface JsonlLineOffset {
+  lineNumber: number;
+  byteOffset: number;
+}
+
+export async function readJsonlLinesAtOffsets(
+  path: string,
+  locations: readonly JsonlLineOffset[],
+): Promise<Map<number, string>> {
+  const found = new Map<number, string>();
+  const file = await open(path, "r");
+  try {
+    for (const location of locations) {
+      if (location.lineNumber < 1 || location.byteOffset < 0 || found.has(location.lineNumber)) {
+        continue;
+      }
+      const line = await readLineAtOffset(file, location.byteOffset);
+      if (line !== null) found.set(location.lineNumber, line);
+    }
+    return found;
+  } finally {
+    await file.close();
+  }
+}
+
+async function readLineAtOffset(file: FileHandle, byteOffset: number): Promise<string | null> {
+  const chunks: Buffer[] = [];
+  let position = byteOffset;
+  for (;;) {
+    const buffer = Buffer.alloc(LINE_CHUNK_BYTES);
+    const result = await file.read(buffer, 0, buffer.length, position);
+    if (result.bytesRead === 0) break;
+    const data = buffer.subarray(0, result.bytesRead);
+    const newline = data.indexOf(10);
+    if (newline !== -1) {
+      chunks.push(Buffer.from(data.subarray(0, newline)));
+      break;
+    }
+    chunks.push(Buffer.from(data));
+    position += result.bytesRead;
+  }
+  if (chunks.length === 0) return null;
+  const bytes = Buffer.concat(chunks);
+  const content = bytes.at(-1) === 13 ? bytes.subarray(0, -1) : bytes;
+  return stripBom(content.toString("utf8"));
 }
 
 export async function* readHeadJsonlLines(path: string, maxLines: number): AsyncIterable<string> {

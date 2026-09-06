@@ -105,12 +105,15 @@ async function* streamFileHits(
     throw new Error(`Grep file exceeds ${maxFileSizeBytes} bytes: ${filePath}`);
   }
   let lineNumber = 0;
+  let byteOffset = 0;
   for await (const entry of readBoundedLines(filePath)) {
     lineNumber += 1;
+    const lineOffset = byteOffset;
+    byteOffset += entry.bytes;
     budget.bytes += entry.bytes;
     assertScanBudget(budget);
     if (!lineMatches(entry.line)) continue;
-    yield { path: filePath, lineNumber };
+    yield { path: filePath, lineNumber, byteOffset: lineOffset };
   }
 }
 
