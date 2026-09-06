@@ -4,19 +4,19 @@ import { useEffect } from "react";
 import { FaqPage } from "./components/faq-page";
 import { Hero } from "./components/hero";
 import { HowItWorks } from "./components/how-it-works";
+import { InfoPage } from "./components/info-page";
 import { Install } from "./components/install";
 import { PrivacyPage } from "./components/privacy-page";
 import { SearchTiers } from "./components/search-tiers";
 import { SiteFooter } from "./components/site-footer";
 import { SiteHeader } from "./components/site-header";
 import { ToolsTable } from "./components/tools-table";
-import { pageFromPath, type PageId } from "./lib/page";
+import { type PageId } from "./lib/page";
 import { seoForPage } from "./lib/seo";
 
 import "lenis/dist/lenis.css";
 
-export function App() {
-  const page = pageFromPath(window.location.pathname);
+export function App({ page }: { page: PageId }) {
   const seo = seoForPage(page);
 
   useEffect(() => {
@@ -42,6 +42,10 @@ function PageBody({ page }: { page: PageId }) {
       return <Home />;
     case "privacy":
       return <PrivacyPage />;
+    case "about":
+    case "contact":
+    case "developers":
+      return <InfoPage page={page} />;
     case "faq":
       return <FaqPage />;
     default: {

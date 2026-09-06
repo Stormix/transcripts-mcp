@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from "vite";
+import { createServer, defineConfig, type HtmlTagDescriptor, type Plugin } from "vite";
 
-import { pageFromHtmlFilename } from "./src/lib/page";
+import { pageFromHtmlFilename, type PageId } from "./src/lib/page";
 import {
   ogImageAlt,
   ogImageHeight,
@@ -23,14 +23,37 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 function htmlSeo(): Plugin {
   return {
     name: "html-seo",
-    transformIndexHtml(_html, ctx) {
-      return seoTags(seoForPage(pageFromHtmlFilename(ctx.filename)));
+    async transformIndexHtml(html, ctx) {
+      const page = pageFromHtmlFilename(ctx.filename);
+      const server = await createServer({
+        configFile: false,
+        root,
+        plugins: [react()],
+        resolve: { alias: { "@": path.resolve(root, "src") } },
+        server: { middlewareMode: true },
+        appType: "custom",
+      });
+      try {
+        const { render }: { render: (page: PageId) => string } =
+          await server.ssrLoadModule("/src/render.tsx");
+        return {
+          html: html.replace('<div id="root"></div>', () => `<div id="root">${render(page)}</div>`),
+          tags: seoTags(seoForPage(page)),
+        };
+      } finally {
+        await server.close();
+      }
     },
   };
 }
 
 function seoTags(seo: PageSeo): HtmlTagDescriptor[] {
   return [
+    {
+      tag: "link",
+      attrs: { rel: "alternate", type: "text/markdown", href: `${seo.canonical}index.md` },
+    },
+    { tag: "link", attrs: { rel: "describedby", href: "/llms.txt" } },
     { tag: "title", children: seo.title },
     { tag: "meta", attrs: { name: "description", content: seo.description } },
     {
@@ -70,12 +93,19 @@ export default defineConfig({
       "@": path.resolve(root, "./src"),
     },
   },
-  build: {
-    rollupOptions: {
-      input: {
-        main: path.resolve(root, "index.html"),
-        privacy: path.resolve(root, "privacy/index.html"),
-        faq: path.resolve(root, "faq/index.html"),
+  environments: {
+    client: {
+      build: {
+        rollupOptions: {
+          input: {
+            about: path.resolve(root, "about/index.html"),
+            contact: path.resolve(root, "contact/index.html"),
+            developers: path.resolve(root, "developers/index.html"),
+            main: path.resolve(root, "index.html"),
+            privacy: path.resolve(root, "privacy/index.html"),
+            faq: path.resolve(root, "faq/index.html"),
+          },
+        },
       },
     },
   },

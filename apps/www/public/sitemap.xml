@@ -18,4 +18,13 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+  <url>
+    <loc>https://transcriptsmcp.dev/developers/</loc>
+  </url>
+  <url>
+    <loc>https://transcriptsmcp.dev/about/</loc>
+  </url>
+  <url>
+    <loc>https://transcriptsmcp.dev/contact/</loc>
+  </url>
 </urlset>

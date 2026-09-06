@@ -1,5 +1,7 @@
 import type { PageId } from "./page";
 
+import { infoPages } from "./info-pages";
+import { privacyEmail } from "./site";
 import { faqItems, faqPath, howItWorks, privacyPath, repoUrl } from "./site";
 
 export const siteOrigin = "https://transcriptsmcp.dev";
@@ -41,6 +43,12 @@ const organization = {
     url: logoUrl,
   },
   sameAs: [repoUrl],
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: privacyEmail,
+    contactType: "customer support",
+    url: `${siteOrigin}/contact/`,
+  },
 };
 
 const website = {
@@ -62,6 +70,33 @@ export interface PageSeo {
 
 export function seoForPage(page: PageId): PageSeo {
   switch (page) {
+    case "about":
+    case "contact":
+    case "developers": {
+      const copy = infoPages[page];
+      const canonical = `${siteOrigin}/${page}/`;
+      return {
+        title: copy.title,
+        description: copy.lede,
+        canonical,
+        jsonLd: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            organization,
+            website,
+            {
+              "@type":
+                page === "about" ? "AboutPage" : page === "contact" ? "ContactPage" : "WebPage",
+              "@id": `${canonical}#webpage`,
+              url: canonical,
+              name: copy.title,
+              description: copy.lede,
+              isPartOf: { "@id": websiteId },
+            },
+          ],
+        }),
+      };
+    }
     case "home":
       return homeSeo;
     case "privacy":

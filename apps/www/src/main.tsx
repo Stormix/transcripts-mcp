@@ -1,7 +1,8 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { hydrateRoot } from "react-dom/client";
 
 import { App } from "./App";
+import { pageFromPath } from "./lib/page";
 
 import "./index.css";
 
@@ -11,8 +12,9 @@ if (!root) {
   throw new Error("Root element #root was not found");
 }
 
-createRoot(root).render(
+hydrateRoot(
+  root,
   <StrictMode>
-    <App />
+    <App page={pageFromPath(window.location.pathname)} />
   </StrictMode>,
 );

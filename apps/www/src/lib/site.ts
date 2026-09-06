@@ -110,6 +110,9 @@ export const privacyPath = "/privacy/";
 export const faqPath = "/faq/";
 
 export const footerPages = [
+  { label: "Developers", href: "/developers/" },
+  { label: "About", href: "/about/" },
+  { label: "Contact", href: "/contact/" },
   { label: "Privacy", href: privacyPath },
   { label: "FAQ", href: faqPath },
 ] as const;

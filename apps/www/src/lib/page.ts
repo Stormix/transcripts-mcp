@@ -1,4 +1,4 @@
-export const pageIds = ["home", "privacy", "faq"] as const;
+export const pageIds = ["home", "privacy", "faq", "about", "contact", "developers"] as const;
 
 export type PageId = (typeof pageIds)[number];
 
@@ -6,6 +6,12 @@ export function pageFromPath(pathname: string): PageId {
   const path = pathname.replace(/\/+$/, "") || "/";
 
   switch (path) {
+    case "/about":
+      return "about";
+    case "/contact":
+      return "contact";
+    case "/developers":
+      return "developers";
     case "/privacy":
       return "privacy";
     case "/faq":
@@ -20,13 +26,7 @@ export function pageFromPath(pathname: string): PageId {
 export function pageFromHtmlFilename(filename: string): PageId {
   const normalized = filename.replaceAll("\\", "/");
 
-  if (normalized.endsWith("/privacy/index.html")) {
-    return "privacy";
-  }
-
-  if (normalized.endsWith("/faq/index.html")) {
-    return "faq";
-  }
-
-  return "home";
+  return (
+    pageIds.find((page) => page !== "home" && normalized.endsWith(`/${page}/index.html`)) ?? "home"
+  );
 }
