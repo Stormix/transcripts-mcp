@@ -4,10 +4,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { navLinks, repoUrl } from "@/lib/site";
 import { useScrollToHash } from "@/lib/use-scroll-to-hash";
 import { Link } from "@tanstack/react-router";
-import { Github, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 
 import { Container } from "./container";
+import { GithubIcon } from "./github-icon";
 import { LogoMark } from "./logo-mark";
 
 export function SiteHeader({ page }: { page: PageId }) {
@@ -48,7 +49,7 @@ export function SiteHeader({ page }: { page: PageId }) {
             rel="noopener noreferrer"
             className="flex items-center gap-[7px] rounded-[7px] px-[13px] py-2 text-paper transition-colors hover:bg-ink-raised"
           >
-            <Github className="size-[14px]" />
+            <GithubIcon className="size-[14px]" />
             <span className="font-body text-[13.5px] font-medium">GitHub</span>
           </a>
         </nav>

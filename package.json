@@ -27,18 +27,18 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.8",
+    "@changesets/cli": "^3.0.2",
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@transcripts-mcp/oxlint-plugins": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "husky": "^9.1.7",
-    "knip": "^6.26.0",
-    "lint-staged": "^17.3.0",
+    "knip": "^6.34.0",
+    "lint-staged": "^17.4.1",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "turbo": "^2.10.9",
+    "turbo": "^2.10.12",
     "typescript": "catalog:",
     "vitest": "^5.0.0",
     "zod": "catalog:"
@@ -53,5 +53,5 @@
     "bun": ">=1.2.0",
     "node": ">=26.8.1"
   },
-  "packageManager": "pnpm@12.3.1"
+  "packageManager": "pnpm@12.3.3"
 }

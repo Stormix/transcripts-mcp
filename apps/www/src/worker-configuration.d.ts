@@ -6979,10 +6979,7 @@ interface Ai_Cf_Openai_Whisper_Large_V3_Turbo_Output {
      * during the transcription process.
      */
     compression_ratio?: number;
-    /**
-     * The probability that the segment contains no speech, represented as a decimal between 0 and
-     * 1.
-     */
+    /** The probability that the segment contains no speech, represented as a decimal between 0 and 1. */
     no_speech_prob?: number;
     words?: {
       /** The individual word transcribed from the audio. */

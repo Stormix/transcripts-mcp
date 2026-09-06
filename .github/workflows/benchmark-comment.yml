@@ -11,12 +11,14 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: benchmark-comment-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  group: benchmark-comment-${{ github.event.workflow_run.head_repository.id }}-${{
+    github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
   comment:
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion != 'cancelled'
+    if: github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -46,7 +48,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           path: trusted
           persist-credentials: false
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
         with:
           name: benchmark-comparison
@@ -74,7 +76,8 @@ jobs:
         env:
           BASE_SHA: ${{ steps.pr.outputs.base }}
           HEAD_SHA: ${{ steps.pr.outputs.head }}
-        run: bun trusted/packages/search/src/bench/render.ts results/comparison.json report.md "$BASE_SHA" "$HEAD_SHA"
+        run: bun trusted/packages/search/src/bench/render.ts results/comparison.json
+          report.md "$BASE_SHA" "$HEAD_SHA"
       - name: Update the benchmark comment
         if: steps.pr.outputs.number != ''
         uses: actions/github-script@v9

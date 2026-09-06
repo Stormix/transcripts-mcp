@@ -9,11 +9,11 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit --skipLibCheck",
-    "test": "vitest run --config ../../vitest.config.ts"
+    "test": "vitest run --config ../../vitest.config.mts"
   },
   "dependencies": {
     "@ff-labs/fff-bun": "^0.10.6",
-    "@huggingface/transformers": "^3.8.1",
+    "@huggingface/transformers": "^4.2.0",
     "@transcripts-mcp/core": "workspace:*",
     "sqlite-vec": "^0.1.9",
     "zod": "catalog:"
