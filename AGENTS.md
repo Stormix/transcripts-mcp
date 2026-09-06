@@ -33,6 +33,7 @@ Key directories:
 - Write tests for new and existing functionality
 - Use oxfmt for formatting and oxlint for linting (not ESLint/Prettier/Biome)
 - Follow the existing commit convention: `type(scope): description` (see [.agents/skills/git-conventions/SKILL.md](.agents/skills/git-conventions/SKILL.md)); commit on the current branch unless the user asks to use a feature branch
+- Before pushing, fetch the upstream branch. If it has advanced, rebase unpublished local commits onto it, including when working on `main`, then push normally. Keep history linear; do not create merge commits or bypass branch protection to push. Rewriting already-published history requires explicit user authorization.
 - Respect TypeScript strict mode — never use `any` or `unknown`, use proper types (see 031-never-use-any.mdc)
 - Cross-package imports use the workspace package name (`@transcripts-mcp/*`), never relative paths
 - Tests are `*.spec.ts` under `src/tests/`, never `__tests__` or `*.test.ts`
