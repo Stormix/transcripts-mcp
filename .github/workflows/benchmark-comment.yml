@@ -46,7 +46,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           path: trusted
           persist-credentials: false
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
         with:
           name: benchmark-comparison
