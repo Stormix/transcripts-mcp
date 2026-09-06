@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 
 import type { AdapterRegistry } from "@transcripts-mcp/core";
 
@@ -24,15 +24,40 @@ export function registerBuildIndex(server: McpServer, registry: AdapterRegistry)
       description: contract.description,
       inputSchema: buildIndexInputSchema,
     },
-    async (input) => runTool(() => buildIndex(registry, input)),
+    async (input, context) => runTool(() => buildIndex(registry, input, context)),
   );
 }
 
-async function buildIndex(registry: AdapterRegistry, input: BuildIndexInput) {
+async function buildIndex(
+  registry: AdapterRegistry,
+  input: BuildIndexInput,
+  context: ServerContext,
+) {
   const started = Date.now();
+  const { _meta: metadata } = context.mcpReq;
+  const progressToken = metadata?.progressToken;
+  let updates = 0;
+  let lastUpdate = Number.NEGATIVE_INFINITY;
+  let lastPhase = "";
   const result = await runBuildIndex(registry, {
     full: input.full,
     semantic: input.semantic,
+    signal: context.mcpReq.signal,
+    onProgress: async (progress) => {
+      if (progressToken === undefined) return;
+      const now = Date.now();
+      if (progress.phase === lastPhase && now - lastUpdate < 1000) return;
+      lastUpdate = now;
+      lastPhase = progress.phase;
+      await context.mcpReq.notify({
+        method: "notifications/progress",
+        params: {
+          progressToken,
+          progress: updates++,
+          message: `${progress.phase}: ${progress.files} files indexed, ${progress.skipped} skipped, ${progress.messages} messages, ${progress.embedded} embedded`,
+        },
+      });
+    },
   });
   return { ...result, durationMs: Date.now() - started };
 }

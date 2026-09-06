@@ -143,6 +143,10 @@ Call `build_index`, then use `search_transcripts` with `mode: "fts"` (the defaul
 
 Run `build_index` again to pick up transcript changes. Set `full: true` to rebuild from scratch.
 
+Clients that send `_meta.progressToken` receive progress notifications with file and message counts. Cancellation stops at indexing and embedding checkpoints and preserves completed file updates. Retry without `full: true` to reuse them, unless a schema upgrade is still unfinished. Progress notifications do not override a client's fixed tool timeout; allow enough time for large corpora and the first embedding-model download.
+
+SQLite failures return a safe error `code` such as `SQLITE_BUSY` or `SQLITE_READONLY` alongside the generic message. Query text, transcript content, and database paths are omitted.
+
 After an upgrade that changes the local SQLite schema, `search_transcripts` returns an `INDEX_REBUILD_REQUIRED` error without modifying the old cache. Run `build_index` with `full: true` to replace it. Source transcripts are untouched; cached embeddings are replaced and require another build with `semantic: true`. Incompatible server versions must use distinct `TRANSCRIPTS_MCP_INDEX` paths if they run concurrently.
 
 ### Semantic search

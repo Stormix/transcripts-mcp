@@ -56,4 +56,14 @@ export interface SearchQuery {
 export interface BuildIndexOptions {
   full?: boolean;
   semantic?: boolean;
+  signal?: AbortSignal;
+  onProgress?: (progress: BuildIndexProgress) => Promise<void>;
+}
+
+interface BuildIndexProgress {
+  phase: "indexing" | "embedding" | "complete";
+  files: number;
+  messages: number;
+  skipped: number;
+  embedded: number;
 }

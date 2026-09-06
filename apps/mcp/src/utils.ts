@@ -5,6 +5,7 @@ import * as z from "zod/v4";
 import { IndexRebuildRequiredError } from "@transcripts-mcp/search/errors";
 
 const sqliteErrorSchema = z.object({ code: z.string().regex(/^SQLITE_/) });
+const sqliteCodeSchema = z.string().regex(/^SQLITE_[A-Z0-9_]{1,48}$/);
 
 export function parseIso(value: string | undefined): Date | undefined {
   if (value === undefined) return undefined;
@@ -56,8 +57,15 @@ export async function runTool<T>(run: () => Promise<T>) {
         }),
       );
     }
-    if (sqliteErrorSchema.safeParse(error).success) {
-      return errorResult("local index database error");
+    const sqliteError = sqliteErrorSchema.safeParse(error);
+    if (sqliteError.success) {
+      const parsedCode = sqliteCodeSchema.safeParse(sqliteError.data.code);
+      return errorResult(
+        JSON.stringify({
+          code: parsedCode.success ? parsedCode.data : "SQLITE_ERROR",
+          message: "local index database error",
+        }),
+      );
     }
     return errorResult(error instanceof Error ? error.message : "unknown error");
   }

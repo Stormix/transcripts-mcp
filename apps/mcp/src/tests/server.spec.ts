@@ -29,6 +29,19 @@ afterEach(async () => {
 });
 
 describe("createServer", () => {
+  it("should send requested progress and stop cancelled builds over MCP", () => {
+    const result = spawnSync(
+      "bun",
+      ["--bun", join(import.meta.dirname, "build-index.harness.ts")],
+      {
+        encoding: "utf8",
+        timeout: 20_000,
+      },
+    );
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(result.stdout).toContain("BUILD_INDEX_TOOL_OK");
+  });
+
   it("should return tool errors when indexed search dates are invalid", () => {
     const result = spawnSync(
       "bun",
@@ -90,7 +103,7 @@ describe("createServer", () => {
       code: "INDEX_REBUILD_REQUIRED",
       message: "The local search index was created by an incompatible server version.",
       actualSchemaVersion: 3,
-      expectedSchemaVersion: 4,
+      expectedSchemaVersion: 5,
       recovery: { tool: "build_index", arguments: { full: true } },
     });
   });
@@ -99,10 +112,30 @@ describe("createServer", () => {
     const databaseError = new Error("SQLITE_ERROR: secret query text");
     Object.assign(databaseError, { code: "SQLITE_ERROR" });
     const redacted = await runTool(() => Promise.reject(databaseError));
-    expect(redacted.content[0]?.text).toBe("local index database error");
+    expect(JSON.parse(redacted.content[0]?.text ?? "null")).toEqual({
+      code: "SQLITE_ERROR",
+      message: "local index database error",
+    });
 
     const arbitrary = await runTool(() => Promise.reject({ message: "secret thrown value" }));
     expect(arbitrary.content[0]?.text).toBe("unknown error");
+  });
+
+  it("should preserve SQLite failure codes without leaking query text or paths", async () => {
+    for (const code of ["SQLITE_BUSY", "SQLITE_LOCKED", "SQLITE_READONLY", "SQLITE_CORRUPT"]) {
+      const error = Object.assign(new Error("secret transcript at /private/index.db"), { code });
+      const result = await runTool(() => Promise.reject(error));
+      expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
+        code,
+        message: "local index database error",
+      });
+    }
+    const error = Object.assign(new Error("secret query"), {
+      code: "SQLITE_ERROR: /private/index.db",
+    });
+    const result = await runTool(() => Promise.reject(error));
+    expect(result.content[0]?.text).not.toContain("private");
+    expect(result.content[0]?.text).not.toContain("secret");
   });
 
   it("should report availability and a session count when list_providers walks a fake root", async () => {

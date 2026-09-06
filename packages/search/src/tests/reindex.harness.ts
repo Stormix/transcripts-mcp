@@ -33,7 +33,7 @@ const registry = createRegistry([adapter]);
 const scopes = [{ provider: adapter.id, root: await resolveTranscriptRoot(root) }];
 await writeSession(root, "one", [messageLine("user", "originalterm")]);
 const initial = await index.build(registry);
-assert.deepEqual(initial.schemaReset, { fromVersion: 3, toVersion: 4 });
+assert.deepEqual(initial.schemaReset, { fromVersion: 3, toVersion: 5 });
 const db = new Database(dbPath);
 try {
   for (const table of ["files", "messages_fts", "embeddings"]) {
