@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,15 +10,19 @@ import { smokeMcpArtifact } from "./smoke-artifact.ts";
 const repoRoot = join(import.meta.dirname, "../../../..");
 const cliDist = join(repoRoot, "packages", "cli", "dist");
 
-beforeAll(() => {
-  const build = spawnSync("bun", [join(repoRoot, "scripts", "build-cli.ts"), "--bundle-only"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  if (build.status !== 0) throw new Error(build.stderr || build.stdout || "CLI build failed");
+beforeAll(async () => {
+  await buildCliArtifacts();
 }, 30_000);
 
 describe("release artifact smoke", () => {
+  it("should reject the handshake when initialize returns an error", async () => {
+    const source =
+      "process.stdin.once('data',()=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:1,error:{code:-32603,message:'fixture failure'}})+'\\n'));";
+    await expect(smokeMcpArtifact(process.execPath, ["--eval", source])).rejects.toThrow(
+      "initialize failed: -32603 fixture failure",
+    );
+  });
+
   it("should complete an MCP handshake when starting the generated server bundle", async () => {
     const result = await smokeMcpArtifact("bun", [join(cliDist, "server.js")]);
     expect(result.toolNames).toHaveLength(6);
@@ -52,13 +56,66 @@ describe("release artifact smoke", () => {
   });
 });
 
+async function buildCliArtifacts(): Promise<void> {
+  const child = spawn("bun", [join(repoRoot, "scripts", "build-cli.ts"), "--bundle-only"], {
+    cwd: repoRoot,
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  child.stdin.end();
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk: Buffer) => {
+    stdout += chunk.toString("utf8");
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString("utf8");
+  });
+  const closed = observeBuild(child);
+  if (!(await settlesWithin(closed, 25_000))) {
+    child.kill("SIGTERM");
+    if (!(await settlesWithin(closed, 1_000))) child.kill("SIGKILL");
+  }
+  if (!(await settlesWithin(closed, 1_000))) throw new Error("CLI build did not terminate");
+  const status = await closed;
+  if (status.code !== 0) throw new Error(stderr || stdout || "CLI build failed");
+}
+
+function observeBuild(child: ChildProcessWithoutNullStreams): Promise<BuildStatus> {
+  return new Promise((resolveExit, reject) => {
+    child.once("error", reject);
+    child.once("close", (code, signal) => resolveExit({ code, signal }));
+  });
+}
+
+function settlesWithin(promise: Promise<BuildStatus>, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolveResult) => {
+    const timer = setTimeout(() => resolveResult(false), timeoutMs);
+    promise.then(
+      () => {
+        clearTimeout(timer);
+        return resolveResult(true);
+      },
+      () => {
+        clearTimeout(timer);
+        return resolveResult(true);
+      },
+    );
+  });
+}
+
+interface BuildStatus {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+}
+
 async function expectFixtureStopped(source: string): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), "transcripts-mcp-smoke-fixture-"));
   const pidPath = join(root, "pid");
   try {
     await expect(
       smokeMcpArtifact(process.execPath, ["--eval", source, pidPath], {
-        responseTimeoutMs: 100,
+        responseTimeoutMs: 1_000,
         gracefulExitMs: 250,
         signalExitMs: 500,
         forcedExitMs: 500,

@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 const defaultSmokeTimeoutMs = 5_000;
+const maxCapturedStderrCharacters = 64 * 1024;
 const expectedTools = [
   "build_index",
   "get_transcript",
@@ -82,7 +83,7 @@ export async function smokeMcpArtifact(
       windowsHide: true,
     });
     child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
+      stderr = `${stderr}${chunk.toString("utf8")}`.slice(-maxCapturedStderrCharacters);
     });
     closed = observeChild(child);
     lines = createInterface({ input: child.stdout, crlfDelay: Number.POSITIVE_INFINITY });
@@ -98,7 +99,21 @@ export async function smokeMcpArtifact(
         clientInfo: { name: "artifact-smoke", version: "1.0.0" },
       },
     });
-    await nextResponse(responses, closed, 1, () => stderr, options.responseTimeoutMs);
+    const initializeResponse = await nextResponse(
+      responses,
+      closed,
+      1,
+      () => stderr,
+      options.responseTimeoutMs,
+    );
+    if (initializeResponse.error !== undefined) {
+      throw new Error(
+        `initialize failed: ${initializeResponse.error.code} ${initializeResponse.error.message}`,
+      );
+    }
+    if (initializeResponse.result === undefined) {
+      throw new Error("initialize failed: missing result");
+    }
     send(child, { jsonrpc: "2.0", method: "notifications/initialized" });
     send(child, { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
     const toolsResponse = await nextResponse(
