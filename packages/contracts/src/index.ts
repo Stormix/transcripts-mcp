@@ -100,6 +100,31 @@ export const toolContracts = defineToolContracts({
   },
 });
 
+/** Stable machine-readable errors returned by transcript tools. */
+export const toolErrorContracts = defineToolErrorContracts({
+  indexRebuildRequired: {
+    code: "INDEX_REBUILD_REQUIRED",
+    message: "The local search index was created by an incompatible server version.",
+    recovery: {
+      tool: toolContracts.buildIndex.name,
+      arguments: { full: true },
+    },
+  },
+});
+
+function defineToolErrorContracts<
+  const Contracts extends Record<
+    string,
+    {
+      code: string;
+      message: string;
+      recovery: { tool: string; arguments: Readonly<Record<string, string | number | boolean>> };
+    }
+  >,
+>(contracts: Contracts): Contracts {
+  return contracts;
+}
+
 /** Canonical tool metadata in the order shown on public documentation surfaces. */
 export const toolContractList = [
   toolContracts.listProviders,

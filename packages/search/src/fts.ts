@@ -18,6 +18,7 @@ import {
 } from "@transcripts-mcp/core";
 
 import { schemaVersion, schemaVersionKey } from "./constants.ts";
+import { IndexRebuildRequiredError } from "./errors.ts";
 import {
   deleteEmbeddings,
   embedCorpus,
@@ -61,6 +62,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
 );
 `;
 
+const schemaRebuildRequiredKey = "schema_rebuild_required";
+
 const fileRowSchema = z.object({
   path: z.string(),
   provider: z.string(),
@@ -86,17 +89,48 @@ export interface BuildIndexResult {
   messages: number;
   skipped: number;
   semantic: boolean;
+  schemaReset?: SchemaReset;
+}
+
+export interface SchemaReset {
+  /** Previous schema version when valid version metadata was available. */
+  fromVersion?: number;
+  /** Schema version installed by the successful build. */
+  toVersion: number;
+}
+
+type IndexOpenIntent = "build" | "search";
+interface PendingSchemaReset {
+  metaType?: "table" | "view";
+  sourceVersion?: string;
 }
 
 let loggedHybridFallback = false;
 
 export class TranscriptIndex {
   readonly #db: Database;
+  #pendingSchemaReset: PendingSchemaReset | undefined = undefined;
+  #schemaReset: SchemaReset | undefined = undefined;
   #sqliteVecLoaded: boolean | undefined;
 
-  constructor(dbPath = defaultIndexPath()) {
+  private constructor(dbPath: string, intent: IndexOpenIntent) {
     this.#db = new Database(dbPath, { create: true });
-    this.#ensureSchema();
+    try {
+      this.#ensureSchema(intent);
+    } catch (error) {
+      this.#db.close();
+      throw error;
+    }
+  }
+
+  /** Opens an index for non-destructive search and compatibility inspection. */
+  static open(dbPath = defaultIndexPath()): TranscriptIndex {
+    return new TranscriptIndex(dbPath, "search");
+  }
+
+  /** Opens an index for building; incompatible tables remain intact until `build()` starts. */
+  static openForBuild(dbPath = defaultIndexPath()): TranscriptIndex {
+    return new TranscriptIndex(dbPath, "build");
   }
 
   close(): void {
@@ -112,6 +146,7 @@ export class TranscriptIndex {
     options: BuildIndexOptions | boolean = {},
   ): Promise<BuildIndexResult> {
     const resolved = resolveBuildOptions(options);
+    this.#prepareSchemaReset();
 
     const previous = new Map<
       string,
@@ -174,7 +209,15 @@ export class TranscriptIndex {
       await embedCorpus(this.#db);
     }
 
-    return { files, messages, skipped, semantic: this.semanticAvailable() };
+    const schemaReset = this.#completeSchemaReset();
+
+    return {
+      files,
+      messages,
+      skipped,
+      semantic: this.semanticAvailable(),
+      schemaReset,
+    };
   }
 
   search(query: SearchQuery, scopes: SearchScope[]): SearchHit[] {
@@ -349,22 +392,111 @@ export class TranscriptIndex {
     markSemanticIncomplete(this.#db);
   }
 
-  #ensureSchema(): void {
-    this.#db.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+  #ensureSchema(intent: IndexOpenIntent): void {
+    const metaObject = z
+      .object({ type: z.enum(["table", "view"]) })
+      .safeParse(this.#db.query("SELECT type FROM sqlite_master WHERE name = 'meta'").get());
+    const metaExists = metaObject.success && metaObject.data.type === "table";
+    const metaColumns = metaExists
+      ? z
+          .object({ name: z.string(), pk: z.number() })
+          .array()
+          .safeParse(this.#db.query("PRAGMA table_info(meta)").all())
+      : undefined;
+    const validMeta =
+      metaExists &&
+      metaColumns?.success === true &&
+      metaColumns.data.some((column) => column.name === "key" && column.pk === 1) &&
+      metaColumns.data.some((column) => column.name === "value");
+    const searchTableCount = z
+      .object({ count: z.number() })
+      .parse(
+        this.#db
+          .query(
+            "SELECT count(*) AS count FROM sqlite_master WHERE type IN ('table', 'view') AND name IN ('files', 'messages_fts', 'embeddings')",
+          )
+          .get(),
+      ).count;
+
+    if (!metaObject.success && searchTableCount === 0) {
+      this.#db.exec("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+      this.#db.exec(schema);
+      ensureSemanticSchema(this.#db);
+      this.#db.run("INSERT INTO meta (key, value) VALUES (?, ?)", [
+        schemaVersionKey,
+        String(schemaVersion),
+      ]);
+      return;
+    }
+    if (!validMeta && intent === "search") {
+      throw new IndexRebuildRequiredError(undefined);
+    }
+
+    if (!validMeta) {
+      this.#pendingSchemaReset = {
+        metaType: metaObject.success ? metaObject.data.type : undefined,
+      };
+      return;
+    }
+
     const row = this.#db.query("SELECT value FROM meta WHERE key = ?").get(schemaVersionKey);
     const parsed = z.object({ value: z.string() }).safeParse(row);
     const current = parsed.success ? parsed.data.value : undefined;
-    if (current !== String(schemaVersion)) {
-      this.#dropSearchTables();
+    const rebuildRow = this.#db
+      .query("SELECT value FROM meta WHERE key = ?")
+      .get(schemaRebuildRequiredKey);
+    const parsedRebuild = z.object({ value: z.string() }).safeParse(rebuildRow);
+    const requiresRebuild = parsedRebuild.success || current !== String(schemaVersion);
+    if (requiresRebuild) {
+      const sourceVersion = parsedRebuild.success ? parsedRebuild.data.value : current;
+      const numericVersion = parseSchemaVersion(sourceVersion);
+      if (intent === "search") {
+        throw new IndexRebuildRequiredError(numericVersion);
+      }
+      this.#pendingSchemaReset = { sourceVersion };
+      return;
     }
+    if (intent === "build") {
+      this.#db.exec(schema);
+      ensureSemanticSchema(this.#db);
+    }
+  }
+
+  #prepareSchemaReset(): void {
+    const pending = this.#pendingSchemaReset;
+    if (pending === undefined) return;
+    if (pending.metaType === "view") {
+      this.#db.exec("DROP VIEW meta");
+    } else if (pending.metaType === "table") {
+      this.#db.exec("DROP TABLE meta");
+    }
+    this.#db.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    this.#db.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", [
+      schemaRebuildRequiredKey,
+      pending.sourceVersion ?? "unknown",
+    ]);
+    this.#dropSearchTables();
     this.#db.exec(schema);
     ensureSemanticSchema(this.#db);
-    if (current !== String(schemaVersion)) {
+    this.#schemaReset = {
+      fromVersion: parseSchemaVersion(pending.sourceVersion),
+      toVersion: schemaVersion,
+    };
+    this.#pendingSchemaReset = undefined;
+  }
+
+  #completeSchemaReset(): SchemaReset | undefined {
+    const reset = this.#schemaReset;
+    if (reset === undefined) return undefined;
+    this.#db.transaction(() => {
       this.#db.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", [
         schemaVersionKey,
         String(schemaVersion),
       ]);
-    }
+      this.#db.run("DELETE FROM meta WHERE key = ?", [schemaRebuildRequiredKey]);
+    })();
+    this.#schemaReset = undefined;
+    return reset;
   }
 
   #dropSearchTables(): void {
@@ -373,6 +505,12 @@ export class TranscriptIndex {
     this.#db.exec("DROP TABLE IF EXISTS embeddings");
     markSemanticIncomplete(this.#db);
   }
+}
+
+function parseSchemaVersion(value: string | undefined): number | undefined {
+  if (value === undefined || !/^\d+$/.test(value)) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
 function logHybridFallback(reason: string): void {
@@ -395,7 +533,7 @@ export async function buildIndex(
   options: BuildIndexOptions = {},
 ): Promise<BuildIndexResult> {
   const dbPath = await ensureIndexDir();
-  const index = new TranscriptIndex(dbPath);
+  const index = TranscriptIndex.openForBuild(dbPath);
   try {
     return await index.build(registry, options);
   } finally {
@@ -408,7 +546,7 @@ export async function searchTranscripts(
   query: SearchQuery,
 ): Promise<SearchHit[]> {
   const scopes = await resolveSearchScopes(registry);
-  const index = new TranscriptIndex();
+  const index = TranscriptIndex.open();
   try {
     if (query.mode === "hybrid") return await index.searchHybrid(query, scopes);
     return index.search(query, scopes);

@@ -27,7 +27,13 @@ legacy.exec(`
   CREATE TABLE embeddings (path TEXT PRIMARY KEY);
 `);
 legacy.close();
-const index = new TranscriptIndex(dbPath);
+const index = TranscriptIndex.openForBuild(dbPath);
+const adapter = createFixtureAdapter(root);
+const registry = createRegistry([adapter]);
+const scopes = [{ provider: adapter.id, root: await resolveTranscriptRoot(root) }];
+await writeSession(root, "one", [messageLine("user", "originalterm")]);
+const initial = await index.build(registry);
+assert.deepEqual(initial.schemaReset, { fromVersion: 3, toVersion: 4 });
 const db = new Database(dbPath);
 try {
   for (const table of ["files", "messages_fts", "embeddings"]) {
@@ -36,11 +42,6 @@ try {
       `${table} was not upgraded with source_root`,
     );
   }
-  const adapter = createFixtureAdapter(root);
-  const registry = createRegistry([adapter]);
-  const scopes = [{ provider: adapter.id, root: await resolveTranscriptRoot(root) }];
-  await writeSession(root, "one", [messageLine("user", "originalterm")]);
-  await index.build(registry);
   assert.equal(await embedCorpus(db, async () => new Float32Array(384)), true);
   const originalFiles = db.query("SELECT * FROM files").all();
   await writeSession(root, "one", [

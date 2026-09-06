@@ -184,7 +184,7 @@ try {
 } finally {
   semanticDb.close();
 }
-const index = new TranscriptIndex();
+const index = TranscriptIndex.open();
 try {
   measurements.push(
     await measure(

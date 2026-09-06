@@ -181,6 +181,11 @@ export const faqItems = [
       "Not for grep. grep_transcripts scans the files immediately. Run build_index when you want ranked full-text. Semantic and hybrid need a semantic build, and the server running under Bun.",
   },
   {
+    question: "Why does search say the index needs a rebuild?",
+    answer:
+      "INDEX_REBUILD_REQUIRED means a server upgrade changed the local SQLite cache format. Run build_index with full: true; source transcripts are untouched. Use semantic: true to recreate embeddings. Incompatible server versions running at the same time need separate TRANSCRIPTS_MCP_INDEX paths.",
+  },
+  {
     question: "Why doesn't hybrid work with npx?",
     answer:
       "The npx platform binary cannot embed sqlite-vec or the ONNX engine. Run the server with bunx --bun transcripts-mcp to use semantic search.",

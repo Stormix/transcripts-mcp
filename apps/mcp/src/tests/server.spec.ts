@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { toolNames } from "@transcripts-mcp/contracts";
 import { createRegistry, defineJsonlAdapter } from "@transcripts-mcp/core";
+import { IndexRebuildRequiredError } from "@transcripts-mcp/search/errors";
 import { grepTranscripts } from "@transcripts-mcp/search/grep";
 
 import { getTranscript } from "../tools/get-transcript.ts";
@@ -80,6 +81,28 @@ describe("createServer", () => {
     const result = await runTool(() => grepTranscripts(registry, { query: "[", mode: "regex" }));
     expect(result).toMatchObject({ isError: true });
     expect(result.content[0]?.text).toContain("Invalid regex");
+  });
+
+  it("should preserve structured index recovery errors", async () => {
+    const result = await runTool(() => Promise.reject(new IndexRebuildRequiredError(3)));
+    expect(result).toMatchObject({ isError: true });
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
+      code: "INDEX_REBUILD_REQUIRED",
+      message: "The local search index was created by an incompatible server version.",
+      actualSchemaVersion: 3,
+      expectedSchemaVersion: 4,
+      recovery: { tool: "build_index", arguments: { full: true } },
+    });
+  });
+
+  it("should redact raw database errors and arbitrary thrown values", async () => {
+    const databaseError = new Error("SQLITE_ERROR: secret query text");
+    Object.assign(databaseError, { code: "SQLITE_ERROR" });
+    const redacted = await runTool(() => Promise.reject(databaseError));
+    expect(redacted.content[0]?.text).toBe("local index database error");
+
+    const arbitrary = await runTool(() => Promise.reject({ message: "secret thrown value" }));
+    expect(arbitrary.content[0]?.text).toBe("unknown error");
   });
 
   it("should report availability and a session count when list_providers walks a fake root", async () => {

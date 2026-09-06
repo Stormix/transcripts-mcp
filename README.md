@@ -143,6 +143,8 @@ Call `build_index`, then use `search_transcripts` with `mode: "fts"` (the defaul
 
 Run `build_index` again to pick up transcript changes. Set `full: true` to rebuild from scratch.
 
+After an upgrade that changes the local SQLite schema, `search_transcripts` returns an `INDEX_REBUILD_REQUIRED` error without modifying the old cache. Run `build_index` with `full: true` to replace it. Source transcripts are untouched; cached embeddings are replaced and require another build with `semantic: true`. Incompatible server versions must use distinct `TRANSCRIPTS_MCP_INDEX` paths if they run concurrently.
+
 ### Semantic search
 
 Run the server with Bun:
