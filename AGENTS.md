@@ -86,21 +86,23 @@ pnpm test
 
 ## Cursor Cloud specific instructions
 
-The Cloud Agent environment ships the pinned toolchain in its base snapshot: Node 24
-(via nvm, set as the nvm `default`), Bun (in `~/.bun`), and pnpm 11 (via corepack). The
-`install` step runs `pnpm install --frozen-lockfile` after activating them.
+The repository pins Node 26.8.1, pnpm 12.3.3, and Bun 1.4.0 in `.tool-versions`.
+Cloud images may expose a different Node version first on `PATH`; install or activate the
+repository pin before running project commands. The `install` step runs
+`pnpm install --frozen-lockfile` after activation.
 
 Cloud Agent tool-call shells are non-interactive and do not source `~/.bashrc`, and the
 exec-daemon prepends its own Node 22 to `PATH`. A bare `node` therefore resolves to Node 22,
 which breaks `pnpm lint` (oxlint loads the `@transcripts-mcp/oxlint-plugins` TypeScript plugin,
-which needs Node 24 type-stripping). Activate the project toolchain before running any pnpm
+which needs Node 26 type-stripping). Activate the project toolchain before running any pnpm
 command:
 
 ```bash
-export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null
-export PATH="$(dirname "$(nvm which default)"):$HOME/.bun/bin:$PATH"
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm install >/dev/null; nvm use >/dev/null
+corepack prepare pnpm@12.3.3 --activate
+export PATH="$(dirname "$(nvm which 26.8.1)"):$HOME/.bun/bin:$PATH"
 ```
 
 With that preamble, `pnpm install`, `pnpm check-types`, `pnpm test`, `pnpm lint`, and
-`bun apps/mcp/src/index.ts` all run against Node 24 and Bun as intended. Interactive or login
-shells (which source `~/.bashrc`) already pick up Node 24 and Bun without the preamble.
+`bun apps/mcp/src/index.ts` run against the checked Node and pnpm pins. Ensure Bun 1.4.0 is
+installed when the image's bundled Bun differs.
