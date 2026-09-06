@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 
 import { z } from "zod";
 
+import { toolContracts } from "@transcripts-mcp/contracts";
 import {
   normalizeCwd,
   readJsonlLines,
@@ -178,12 +179,16 @@ export class TranscriptIndex {
 
   search(query: SearchQuery, scopes: SearchScope[]): SearchHit[] {
     const normalizedQuery = normalizeSearchQueryDates(query);
-    return this.#searchFts(normalizedQuery, normalizedQuery.limit ?? 20, scopes);
+    return this.#searchFts(
+      normalizedQuery,
+      normalizedQuery.limit ?? toolContracts.searchTranscripts.inputs.limit.default,
+      scopes,
+    );
   }
 
   async searchHybrid(query: SearchQuery, scopes: SearchScope[]): Promise<SearchHit[]> {
     const normalizedQuery = normalizeSearchQueryDates(query);
-    const limit = normalizedQuery.limit ?? 20;
+    const limit = normalizedQuery.limit ?? toolContracts.searchTranscripts.inputs.limit.default;
     const ftsHits = this.#searchFts(normalizedQuery, limit, scopes);
     if (!this.semanticAvailable()) {
       logHybridFallback("no embeddings in index");

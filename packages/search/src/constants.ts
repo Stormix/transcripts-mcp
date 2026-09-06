@@ -1,10 +1,12 @@
+import { toolContracts } from "@transcripts-mcp/contracts";
+
 export const candidateWindow = 128;
-export const defaultHitLimit = 50;
-export const maxFileSizeBytes = 10 * 1024 * 1024;
-export const maxGrepLineBytes = 1024 * 1024;
-export const maxGrepPatternLength = 1024;
-export const maxScanBytes = 64 * 1024 * 1024;
-export const scanTimeoutMs = 60_000;
+export const defaultHitLimit = toolContracts.grepTranscripts.inputs.limit.default;
+export const maxFileSizeBytes = toolContracts.grepTranscripts.resourceLimits.maxFileSizeBytes;
+export const maxGrepLineBytes = toolContracts.grepTranscripts.resourceLimits.maxLineBytes;
+export const maxGrepPatternLength = toolContracts.grepTranscripts.inputs.query.maxLength;
+export const maxScanBytes = toolContracts.grepTranscripts.resourceLimits.maxScanBytes;
+export const scanTimeoutMs = toolContracts.grepTranscripts.resourceLimits.scanTimeoutMs;
 export const schemaVersion = 4;
 export const schemaVersionKey = "schema_version";
 export const modelId = "Xenova/all-MiniLM-L6-v2";

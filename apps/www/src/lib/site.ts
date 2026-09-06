@@ -1,3 +1,5 @@
+import { formatToolInputs, toolContractList } from "@transcripts-mcp/contracts";
+
 export const repoUrl = "https://github.com/Stormix/transcripts-mcp";
 export const packageName = "transcripts-mcp";
 export const launchCommand = `npx ${packageName}`;
@@ -66,38 +68,11 @@ export const searchTiers = [
   },
 ] as const;
 
-export const tools = [
-  {
-    name: "list_providers",
-    desc: "Available transcript providers, with capped session file counts.",
-    inputs: "—",
-  },
-  {
-    name: "list_sessions",
-    desc: "Recent sessions, newest first. Summaries only, not the full transcripts.",
-    inputs: "provider? · cwd? · since? · until? · limit? (1–200, default 50)",
-  },
-  {
-    name: "get_transcript",
-    desc: "The messages in one session.",
-    inputs: "provider · id · path? · limit? (1–1000, default 200)",
-  },
-  {
-    name: "grep_transcripts",
-    desc: "Search the raw files. No index required.",
-    inputs: "query · mode? (plain | regex | fuzzy) · provider? · limit?",
-  },
-  {
-    name: "search_transcripts",
-    desc: "Ranked search. Needs build_index. Use hybrid after a semantic build.",
-    inputs: "query · mode? (fts | hybrid) · provider? · role? · cwd? · since? · until? · limit?",
-  },
-  {
-    name: "build_index",
-    desc: "Create or refresh the search index. Pass full to rebuild from scratch.",
-    inputs: "full? · semantic?",
-  },
-] as const;
+export const tools = toolContractList.map((tool) => ({
+  name: tool.name,
+  desc: tool.description,
+  inputs: formatToolInputs(tool.inputs),
+}));
 
 export const privacyPath = "/privacy/";
 export const faqPath = "/faq/";

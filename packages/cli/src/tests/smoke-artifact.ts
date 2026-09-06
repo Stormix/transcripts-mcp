@@ -1,3 +1,5 @@
+import type { ToolInputContract } from "@transcripts-mcp/contracts";
+
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,16 +9,11 @@ import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
+import { toolContractList, toolNames as contractToolNames } from "@transcripts-mcp/contracts";
+
 const defaultSmokeTimeoutMs = 5_000;
 const maxCapturedStderrCharacters = 64 * 1024;
-const expectedTools = [
-  "build_index",
-  "get_transcript",
-  "grep_transcripts",
-  "list_providers",
-  "list_sessions",
-  "search_transcripts",
-];
+const expectedTools = [...contractToolNames].sort();
 
 const responseSchema = z.object({
   jsonrpc: z.literal("2.0"),
@@ -24,8 +21,30 @@ const responseSchema = z.object({
   result: z.record(z.string(), z.json()).optional(),
   error: z.object({ code: z.number(), message: z.string() }).optional(),
 });
+const inputPropertySchema = z
+  .object({
+    type: z.string().optional(),
+    enum: z.array(z.string()).optional(),
+    default: z.json().optional(),
+    minimum: z.number().optional(),
+    maximum: z.number().optional(),
+    minLength: z.number().optional(),
+    maxLength: z.number().optional(),
+  })
+  .passthrough();
 const toolsResultSchema = z.object({
-  tools: z.array(z.object({ name: z.string() })),
+  tools: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      inputSchema: z
+        .object({
+          properties: z.record(z.string(), inputPropertySchema),
+          required: z.array(z.string()).optional(),
+        })
+        .passthrough(),
+    }),
+  ),
 });
 
 export interface ArtifactSmokeResult {
@@ -129,6 +148,7 @@ export async function smokeMcpArtifact(
       );
     }
     const tools = toolsResultSchema.parse(toolsResponse.result);
+    validateToolContracts(tools.tools);
     const toolNames = tools.tools.map((tool) => tool.name).sort();
     if (toolNames.join("\n") !== expectedTools.join("\n")) {
       throw new Error(`Unexpected MCP tools: ${toolNames.join(", ")}`);
@@ -142,6 +162,56 @@ export async function smokeMcpArtifact(
       await rm(isolatedRoot, { recursive: true, force: true });
     }
   }
+}
+
+function validateToolContracts(tools: z.infer<typeof toolsResultSchema>["tools"]): void {
+  for (const contract of toolContractList) {
+    const tool = tools.find((candidate) => candidate.name === contract.name);
+    if (tool === undefined) throw new Error(`Missing MCP tool: ${contract.name}`);
+    if (tool.description !== contract.description) {
+      throw new Error(`Stale MCP description: ${contract.name}`);
+    }
+    const expectedNames = Object.keys(contract.inputs).sort();
+    const actualNames = Object.keys(tool.inputSchema.properties).sort();
+    if (actualNames.join("\n") !== expectedNames.join("\n")) {
+      throw new Error(`Stale MCP inputs: ${contract.name}`);
+    }
+    const expectedRequired = Object.entries(contract.inputs)
+      .filter(([, input]) => input.required)
+      .map(([name]) => name)
+      .sort();
+    const actualRequired = [...(tool.inputSchema.required ?? [])].sort();
+    if (actualRequired.join("\n") !== expectedRequired.join("\n")) {
+      throw new Error(`Stale MCP required inputs: ${contract.name}`);
+    }
+    for (const [name, input] of Object.entries(contract.inputs)) {
+      const property = tool.inputSchema.properties[name];
+      if (property === undefined) throw new Error(`Missing MCP input: ${contract.name}.${name}`);
+      validateInputContract(property, input, `${contract.name}.${name}`);
+    }
+  }
+}
+
+function validateInputContract(
+  property: z.infer<typeof inputPropertySchema>,
+  input: ToolInputContract,
+  field: string,
+): void {
+  if (property.type !== input.type) throw new Error(`Stale MCP type: ${field}`);
+  assertEqualJson(property.enum, input.values, `enum: ${field}`);
+  assertEqualJson(property.default, input.default, `default: ${field}`);
+  assertEqualJson(property.minimum, input.minimum, `minimum: ${field}`);
+  assertEqualJson(property.maximum, input.maximum, `maximum: ${field}`);
+  assertEqualJson(property.minLength, input.minLength, `minLength: ${field}`);
+  assertEqualJson(property.maxLength, input.maxLength, `maxLength: ${field}`);
+}
+
+function assertEqualJson(
+  actual: z.infer<typeof z.json> | undefined,
+  expected: z.infer<typeof z.json> | undefined,
+  field: string,
+): void {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`Stale MCP ${field}`);
 }
 
 function resolveCommand(command: string): string {

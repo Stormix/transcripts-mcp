@@ -4,29 +4,31 @@ import type { AdapterRegistry } from "@transcripts-mcp/core";
 
 import * as z from "zod/v4";
 
-import {
-  grepTranscripts as searchGrep,
-  maxFileSizeBytes,
-  maxGrepLineBytes,
-  maxGrepPatternLength,
-} from "@transcripts-mcp/search";
+import { toolContracts } from "@transcripts-mcp/contracts";
+import { grepTranscripts as searchGrep } from "@transcripts-mcp/search";
 
 import { runTool } from "../utils.ts";
 
+const contract = toolContracts.grepTranscripts;
 const grepTranscriptsInputSchema = z.object({
-  query: z.string().min(1).max(maxGrepPatternLength),
-  mode: z.enum(["plain", "regex", "fuzzy"]).optional(),
+  query: z.string().min(contract.inputs.query.minLength).max(contract.inputs.query.maxLength),
+  mode: z.enum(contract.inputs.mode.values).default(contract.inputs.mode.default),
   provider: z.string().optional(),
-  limit: z.number().int().positive().max(200).optional(),
+  limit: z
+    .number()
+    .int()
+    .min(contract.inputs.limit.minimum)
+    .max(contract.inputs.limit.maximum)
+    .default(contract.inputs.limit.default),
 });
 
 type GrepTranscriptsInput = z.infer<typeof grepTranscriptsInputSchema>;
 
 export function registerGrepTranscripts(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
-    "grep_transcripts",
+    contract.name,
     {
-      description: `Search raw transcript files (plain, regex, or fuzzy; default fuzzy). Patterns are capped at ${maxGrepPatternLength} characters; files at ${maxFileSizeBytes} bytes; fallback lines at ${maxGrepLineBytes} bytes. Unsafe regular expressions and exhausted fallback budgets return errors. Hits are normalized through adapters. Falls back to streaming if the native grep index is unavailable.`,
+      description: contract.description,
       inputSchema: grepTranscriptsInputSchema,
     },
     async (input) => runTool(() => grepTranscripts(registry, input)),
@@ -36,7 +38,7 @@ export function registerGrepTranscripts(server: McpServer, registry: AdapterRegi
 async function grepTranscripts(registry: AdapterRegistry, input: GrepTranscriptsInput) {
   return searchGrep(registry, {
     query: input.query,
-    mode: input.mode ?? "fuzzy",
+    mode: input.mode,
     provider: input.provider,
     limit: input.limit,
   });

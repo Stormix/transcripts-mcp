@@ -31,6 +31,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@transcripts-mcp/contracts": "workspace:*",
     "@transcripts-mcp/typescript-config": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
