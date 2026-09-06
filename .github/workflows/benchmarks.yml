@@ -1,0 +1,61 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmarks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  HUSKY: "0"
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@24
+          install: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - name: Install main dependencies
+        working-directory: base
+        run: pnpm install --frozen-lockfile
+      - name: Install PR dependencies
+        working-directory: pr
+        run: pnpm install --frozen-lockfile
+      - name: Compare identical workloads on this runner
+        working-directory: pr
+        run: pnpm bench --base ../base --head . --output ../bench-results
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f bench-results/comparison.md ]]; then
+            cat bench-results/comparison.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: benchmark-comparison
+          path: bench-results/comparison.json
+          if-no-files-found: ignore
+          retention-days: 14

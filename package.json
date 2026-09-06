@@ -12,7 +12,7 @@
     "build": "turbo build",
     "check-types": "turbo check-types",
     "test": "vitest run",
-    "bench": "vitest bench",
+    "bench": "bun packages/search/src/bench/compare.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt .",

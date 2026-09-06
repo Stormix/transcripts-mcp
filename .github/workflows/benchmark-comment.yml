@@ -1,0 +1,106 @@
+name: Benchmark comment
+
+on:
+  workflow_run:
+    workflows: [Benchmarks]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: benchmark-comment-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Find the current PR from GitHub metadata
+        id: pr
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const candidates = await github.paginate(github.rest.pulls.list, {
+              ...context.repo, state: 'open', base: 'main',
+              head: `${run.head_repository.owner.login}:${run.head_branch}`,
+            });
+            const pr = candidates.find(pr => pr.head.sha === run.head_sha && pr.head.repo?.id === run.head_repository.id);
+            if (!pr) { core.info('No current PR matches this run; skipping stale results.'); return; }
+            core.setOutput('number', pr.number);
+            core.setOutput('base', pr.base.sha);
+            core.setOutput('head', pr.head.sha);
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              ...context.repo, run_id: run.id,
+            });
+            core.setOutput('artifact', artifacts.some(a => a.name === 'benchmark-comparison' && !a.expired));
+      - name: Checkout trusted reporting code
+        if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: trusted
+          persist-credentials: false
+      - uses: actions/download-artifact@v5
+        if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
+        with:
+          name: benchmark-comparison
+          path: results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/setup@v2
+        if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
+        with:
+          runtime: node@24
+          install: false
+      - uses: oven-sh/setup-bun@v2
+        if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
+        with:
+          bun-version: "1.4.0"
+      - name: Install trusted renderer dependencies
+        if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
+        working-directory: trusted
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Validate data and render with trusted code
+        id: render
+        if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ steps.pr.outputs.base }}
+          HEAD_SHA: ${{ steps.pr.outputs.head }}
+        run: bun trusted/packages/search/src/bench/render.ts results/comparison.json report.md "$BASE_SHA" "$HEAD_SHA"
+      - name: Update the benchmark comment
+        if: steps.pr.outputs.number != ''
+        uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          EXPECTED_HEAD: ${{ steps.pr.outputs.head }}
+          EXPECTED_BASE: ${{ steps.pr.outputs.base }}
+          REPORT_READY: ${{ steps.render.outcome == 'success' }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const run = context.payload.workflow_run;
+            const issue_number = Number(process.env.PR_NUMBER);
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: issue_number });
+            if (pr.state !== 'open' || pr.head.sha !== process.env.EXPECTED_HEAD || pr.base.sha !== process.env.EXPECTED_BASE) return;
+            const marker = '<!-- transcripts-benchmark -->';
+            const report = process.env.REPORT_READY === 'true'
+              ? fs.readFileSync('report.md', 'utf8')
+              : `${marker}\n## Benchmark comparison\n\nBenchmark results were unavailable or failed validation. No speed comparison is claimed.`;
+            const runMarker = `<!-- benchmark-run:${run.id}:${run.run_attempt} -->`;
+            const body = `${report}\n[Workflow run and raw results](${run.html_url})\n${runMarker}`;
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number });
+            const previous = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
+            const previousRun = previous?.body?.match(/<!-- benchmark-run:(\d+):(\d+) -->/);
+            if (previousRun && (Number(previousRun[1]) > run.id || (Number(previousRun[1]) === run.id && Number(previousRun[2]) > run.run_attempt))) return;
+            if (previous) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number, body });
+            }
