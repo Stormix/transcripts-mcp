@@ -78,6 +78,7 @@ async function* streamNativeCandidates(
         yield {
           path: join(root, item.relativePath),
           lineNumber: item.lineNumber,
+          byteOffset: item.byteOffset,
           score: item.fuzzyScore,
         };
       }

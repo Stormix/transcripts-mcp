@@ -12,6 +12,7 @@ export interface GrepQuery {
 export interface CandidateHit {
   path: string;
   lineNumber: number;
+  byteOffset?: number;
   score?: number;
 }
 

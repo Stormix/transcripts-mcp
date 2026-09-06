@@ -1,19 +1,23 @@
 import type { CandidateHit, GrepHit } from "./types.ts";
 
-import { readJsonlLinesAt, type AdapterRegistry } from "@transcripts-mcp/core";
+import {
+  readJsonlLinesAt,
+  readJsonlLinesAtOffsets,
+  type AdapterRegistry,
+} from "@transcripts-mcp/core";
 
 import { candidateWindow } from "./constants.ts";
 
-export type LineReader = (
+export type CandidateLineReader = (
   path: string,
-  lineNumbers: readonly number[],
+  candidates: readonly CandidateHit[],
 ) => Promise<Map<number, string>>;
 
 export async function normalizeCandidates(
   registry: AdapterRegistry,
   candidates: AsyncIterable<CandidateHit>,
   limit: number,
-  readLines: LineReader = readJsonlLinesAt,
+  readLines: CandidateLineReader = readCandidateLines,
 ): Promise<GrepHit[]> {
   const hits: GrepHit[] = [];
   if (limit < 1) return hits;
@@ -37,22 +41,19 @@ async function appendAcceptedHits(
   window: readonly CandidateHit[],
   hits: GrepHit[],
   limit: number,
-  readLines: LineReader,
+  readLines: CandidateLineReader,
 ): Promise<void> {
-  const needed = new Map<string, Set<number>>();
+  const needed = new Map<string, CandidateHit[]>();
   for (const candidate of window) {
     if (registry.resolveByPath(candidate.path) === undefined) continue;
-    let lineNumbers = needed.get(candidate.path);
-    if (lineNumbers === undefined) {
-      lineNumbers = new Set();
-      needed.set(candidate.path, lineNumbers);
-    }
-    lineNumbers.add(candidate.lineNumber);
+    const pathCandidates = needed.get(candidate.path);
+    if (pathCandidates === undefined) needed.set(candidate.path, [candidate]);
+    else pathCandidates.push(candidate);
   }
 
   const linesByPath = new Map<string, Map<number, string>>();
-  for (const [path, lineNumbers] of needed) {
-    linesByPath.set(path, await readLines(path, [...lineNumbers]));
+  for (const [path, pathCandidates] of needed) {
+    linesByPath.set(path, await readLines(path, pathCandidates));
   }
 
   for (const candidate of window) {
@@ -72,4 +73,24 @@ async function appendAcceptedHits(
       score: candidate.score,
     });
   }
+}
+
+async function readCandidateLines(
+  path: string,
+  candidates: readonly CandidateHit[],
+): Promise<Map<number, string>> {
+  if (candidates.every((candidate) => candidate.byteOffset !== undefined)) {
+    return readJsonlLinesAtOffsets(
+      path,
+      candidates.flatMap((candidate) =>
+        candidate.byteOffset === undefined
+          ? []
+          : [{ lineNumber: candidate.lineNumber, byteOffset: candidate.byteOffset }],
+      ),
+    );
+  }
+  return readJsonlLinesAt(
+    path,
+    candidates.map((candidate) => candidate.lineNumber),
+  );
 }

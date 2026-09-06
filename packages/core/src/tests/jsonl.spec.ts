@@ -12,6 +12,7 @@ import {
   readJsonlLineAt,
   readJsonlLines,
   readJsonlLinesAt,
+  readJsonlLinesAtOffsets,
   readLastJsonlLine,
 } from "../jsonl";
 
@@ -82,6 +83,20 @@ describe("jsonl", () => {
     expect([...lines.entries()]).toEqual([
       [2, "two"],
       [4, "four"],
+    ]);
+  });
+
+  it("should read CRLF, BOM, and EOF lines from byte offsets in any order", async () => {
+    const path = await writeTempFile("\ufeffone\r\ntwo\nlast");
+    const lines = await readJsonlLinesAtOffsets(path, [
+      { lineNumber: 3, byteOffset: 12 },
+      { lineNumber: 1, byteOffset: 0 },
+      { lineNumber: 2, byteOffset: 8 },
+    ]);
+    expect([...lines.entries()]).toEqual([
+      [3, "last"],
+      [1, "one"],
+      [2, "two"],
     ]);
   });
 });
