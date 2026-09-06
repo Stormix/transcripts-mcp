@@ -6,6 +6,7 @@ import { Database } from "bun:sqlite";
 import { mkdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { setImmediate } from "node:timers/promises";
 
 import { z } from "zod";
 
@@ -43,7 +44,9 @@ CREATE TABLE IF NOT EXISTS files (
   cwd_norm TEXT,
   project_slug TEXT,
   mtime_ms INTEGER NOT NULL,
-  size_bytes INTEGER NOT NULL
+  size_bytes INTEGER NOT NULL,
+  first_message_rowid INTEGER,
+  last_message_rowid INTEGER
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
   text,
@@ -71,6 +74,13 @@ const fileRowSchema = z.object({
   mtime_ms: z.number(),
   size_bytes: z.number(),
 });
+
+const messageBoundsSchema = z
+  .object({
+    first_message_rowid: z.number().nullable(),
+    last_message_rowid: z.number().nullable(),
+  })
+  .nullable();
 
 const searchRowSchema = z.object({
   text: z.string(),
@@ -146,6 +156,7 @@ export class TranscriptIndex {
     options: BuildIndexOptions | boolean = {},
   ): Promise<BuildIndexResult> {
     const resolved = resolveBuildOptions(options);
+    resolved.signal?.throwIfAborted();
     this.#prepareSchemaReset();
 
     const previous = new Map<
@@ -169,11 +180,25 @@ export class TranscriptIndex {
     let messages = 0;
     let skipped = 0;
     const seen = new Set<string>();
+    const report = async (pendingMessages = 0) => {
+      resolved.signal?.throwIfAborted();
+      await resolved.onProgress?.({
+        phase: "indexing",
+        files,
+        messages: messages + pendingMessages,
+        skipped,
+        embedded: 0,
+      });
+      resolved.signal?.throwIfAborted();
+    };
+    await report();
 
     for (const adapter of registry.list()) {
+      resolved.signal?.throwIfAborted();
       if (!(await adapter.isAvailable())) continue;
       const sourceRoot = await resolveTranscriptRoot(adapter.root());
       for await (const summary of adapter.listSessions({})) {
+        resolved.signal?.throwIfAborted();
         seen.add(summary.path);
         const info = await stat(summary.path);
         const prior = previous.get(summary.path);
@@ -186,6 +211,7 @@ export class TranscriptIndex {
           prior.sizeBytes === info.size
         ) {
           skipped += 1;
+          await report();
           continue;
         }
         messages += await this.#indexFile(
@@ -196,20 +222,37 @@ export class TranscriptIndex {
           summary.projectSlug,
           info.mtimeMs,
           info.size,
+          resolved.signal,
+          report,
         );
         files += 1;
+        await report();
       }
     }
 
     for (const path of previous.keys()) {
-      if (!seen.has(path)) this.#deleteFile(path);
+      resolved.signal?.throwIfAborted();
+      if (!seen.has(path)) {
+        this.#deleteFile(path);
+        await setImmediate();
+        await report();
+      }
     }
 
+    let embedded = 0;
     if (resolved.semantic) {
-      await embedCorpus(this.#db);
+      await embedCorpus(this.#db, undefined, {
+        signal: resolved.signal,
+        onProgress: async (count) => {
+          embedded = count;
+          await resolved.onProgress?.({ phase: "embedding", files, messages, skipped, embedded });
+        },
+      });
     }
 
+    resolved.signal?.throwIfAborted();
     const schemaReset = this.#completeSchemaReset();
+    await resolved.onProgress?.({ phase: "complete", files, messages, skipped, embedded });
 
     return {
       files,
@@ -316,6 +359,8 @@ export class TranscriptIndex {
     projectSlug: string | undefined,
     mtimeMs: number,
     sizeBytes: number,
+    signal: AbortSignal | undefined,
+    onProgress: (messages: number) => Promise<void>,
   ): Promise<number> {
     const sessionId = adapter.sessionIdFromPath(path);
     let cwd = summaryCwd;
@@ -328,7 +373,12 @@ export class TranscriptIndex {
     }> = [];
     let lineNumber = 0;
     for await (const text of readJsonlLines(path)) {
+      signal?.throwIfAborted();
       lineNumber += 1;
+      if (lineNumber % 256 === 0) {
+        await setImmediate();
+        await onProgress(pending.length);
+      }
       if (text.trim().length === 0) continue;
       cwd ??= adapter.cwdFromRawLine(text);
       const message = adapter.parseRawLine(text);
@@ -343,14 +393,17 @@ export class TranscriptIndex {
     }
     const cwdNorm = cwd === undefined ? null : normalizeCwd(cwd);
     const slug = projectSlug ?? null;
-    const insert = this.#db.prepare(
+    const insert = this.#db.query(
       `INSERT INTO messages_fts (text, provider, source_root, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp, effective_timestamp)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     this.#db.transaction(() => {
+      signal?.throwIfAborted();
       this.#deleteFile(path);
+      let firstRowid: number | bigint | null = null;
+      let lastRowid: number | bigint | null = null;
       for (const row of pending) {
-        insert.run(
+        const inserted = insert.run(
           row.text,
           adapter.id,
           sourceRoot,
@@ -364,11 +417,13 @@ export class TranscriptIndex {
           row.timestamp,
           row.effectiveTimestamp,
         );
+        firstRowid ??= inserted.lastInsertRowid;
+        lastRowid = inserted.lastInsertRowid;
       }
       this.#db
-        .prepare(
-          `INSERT INTO files (path, provider, source_root, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        .query(
+          `INSERT INTO files (path, provider, source_root, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes, first_message_rowid, last_message_rowid)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           path,
@@ -380,16 +435,34 @@ export class TranscriptIndex {
           slug,
           mtimeMs,
           sizeBytes,
+          firstRowid,
+          lastRowid,
         );
+      markSemanticIncomplete(this.#db);
     })();
     return pending.length;
   }
 
   #deleteFile(path: string): void {
-    this.#db.run("DELETE FROM messages_fts WHERE path = ?", [path]);
-    this.#db.run("DELETE FROM files WHERE path = ?", [path]);
-    deleteEmbeddings(this.#db, path);
-    markSemanticIncomplete(this.#db);
+    // Each file's messages are inserted consecutively inside one transaction.
+    // Rowid bounds let FTS5 seek directly instead of scanning its unindexed path column.
+    this.#db.transaction(() => {
+      const bounds = messageBoundsSchema.parse(
+        this.#db
+          .query("SELECT first_message_rowid, last_message_rowid FROM files WHERE path = ?")
+          .get(path),
+      );
+      if (bounds === null) return;
+      if (bounds.first_message_rowid !== null && bounds.last_message_rowid !== null) {
+        this.#db.run("DELETE FROM messages_fts WHERE rowid BETWEEN ? AND ?", [
+          bounds.first_message_rowid,
+          bounds.last_message_rowid,
+        ]);
+      }
+      this.#db.run("DELETE FROM files WHERE path = ?", [path]);
+      deleteEmbeddings(this.#db, path);
+      markSemanticIncomplete(this.#db);
+    })();
   }
 
   #ensureSchema(intent: IndexOpenIntent): void {
@@ -532,6 +605,7 @@ export async function buildIndex(
   registry: AdapterRegistry,
   options: BuildIndexOptions = {},
 ): Promise<BuildIndexResult> {
+  options.signal?.throwIfAborted();
   const dbPath = await ensureIndexDir();
   const index = TranscriptIndex.openForBuild(dbPath);
   try {

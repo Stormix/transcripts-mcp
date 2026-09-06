@@ -83,7 +83,7 @@ async function verifySqliteWriteFailure(): Promise<void> {
       db.close();
     }
     const retried = await buildIndex(createFixtureRegistry(root));
-    assert.deepEqual(retried.schemaReset, { fromVersion: 3, toVersion: 4 });
+    assert.deepEqual(retried.schemaReset, { fromVersion: 3, toVersion: 5 });
   } finally {
     await removeFixtureRoot(root);
   }
@@ -103,7 +103,7 @@ async function verifyProcessTermination(): Promise<void> {
     assertRebuildMarker(dbPath, "3");
     await assert.rejects(searchTranscripts(createFixtureRegistry(root), { query: "termination" }));
     const retried = await buildIndex(createFixtureRegistry(root));
-    assert.deepEqual(retried.schemaReset, { fromVersion: 3, toVersion: 4 });
+    assert.deepEqual(retried.schemaReset, { fromVersion: 3, toVersion: 5 });
     assert.equal(
       (await searchTranscripts(createFixtureRegistry(root), { query: "termination" })).length,
       1,

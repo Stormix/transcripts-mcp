@@ -19,7 +19,7 @@ import {
 const compatibilityErrorSchema = z.object({
   code: z.literal("INDEX_REBUILD_REQUIRED"),
   actualSchemaVersion: z.literal(3),
-  expectedSchemaVersion: z.literal(4),
+  expectedSchemaVersion: z.literal(5),
 });
 const countSchema = z.object({ count: z.number() });
 
@@ -72,7 +72,7 @@ try {
 
   await writeSession(root, "replacement", [messageLine("user", "replacement message")]);
   const rebuilt = await buildIndex(registry);
-  assert.deepEqual(rebuilt.schemaReset, { fromVersion: 3, toVersion: 4 });
+  assert.deepEqual(rebuilt.schemaReset, { fromVersion: 3, toVersion: 5 });
   assert.equal((await searchTranscripts(registry, { query: "replacement" })).length, 1);
 
   const rebuiltDb = new Database(dbPath);
@@ -135,7 +135,7 @@ try {
     (error) => compatibilityErrorSchema.safeParse(error).success,
   );
   const retried = await buildIndex(createFixtureRegistry(failedRoot));
-  assert.deepEqual(retried.schemaReset, { fromVersion: 3, toVersion: 4 });
+  assert.deepEqual(retried.schemaReset, { fromVersion: 3, toVersion: 5 });
   assert.equal(
     (await searchTranscripts(createFixtureRegistry(failedRoot), { query: "retry" })).length,
     1,

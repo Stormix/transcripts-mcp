@@ -159,13 +159,21 @@ interface EmbeddedRow {
   vector: Uint8Array;
 }
 
-export async function embedCorpus(db: Database, embedder?: CorpusEmbedder): Promise<boolean> {
+export async function embedCorpus(
+  db: Database,
+  embedder?: CorpusEmbedder,
+  options: { signal?: AbortSignal; onProgress?: (messages: number) => Promise<void> } = {},
+): Promise<boolean> {
+  options.signal?.throwIfAborted();
+  await options.onProgress?.(0);
+  options.signal?.throwIfAborted();
   if (corpusIsComplete(db)) {
     setSemanticState(db, semanticComplete);
     return true;
   }
   markSemanticIncomplete(db);
   const loaded = embedder === undefined ? await loadEngine() : undefined;
+  options.signal?.throwIfAborted();
   const selectedEmbedder = embedder ?? loaded;
   if (selectedEmbedder === undefined) return false;
 
@@ -181,14 +189,16 @@ export async function embedCorpus(db: Database, embedder?: CorpusEmbedder): Prom
      ORDER BY path, line_number
      LIMIT ?`,
   );
-  const insert = db.prepare(
+  const insert = db.query(
     `INSERT INTO embeddings (path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   let afterPath = "";
   let afterLineNumber = 0;
+  let embeddedCount = 0;
   for (;;) {
+    options.signal?.throwIfAborted();
     const parsedPage = pendingRowSchema
       .array()
       .safeParse(selectPage.all(afterPath, afterPath, afterLineNumber, semanticCorpusPageSize));
@@ -202,9 +212,11 @@ export async function embedCorpus(db: Database, embedder?: CorpusEmbedder): Prom
         parsedPage.data.map((row) => row.text),
       );
     } catch (error) {
+      options.signal?.throwIfAborted();
       console.error("semantic embedding failed", error);
       return false;
     }
+    options.signal?.throwIfAborted();
     if (vectors.length !== parsedPage.data.length) return false;
 
     const embeddedRows: EmbeddedRow[] = [];
@@ -252,8 +264,11 @@ export async function embedCorpus(db: Database, embedder?: CorpusEmbedder): Prom
     if (last === undefined) return false;
     afterPath = last.path;
     afterLineNumber = last.line_number;
+    embeddedCount += embeddedRows.length;
+    await options.onProgress?.(embeddedCount);
   }
 
+  options.signal?.throwIfAborted();
   if (!corpusIsComplete(db)) return false;
   setSemanticState(db, semanticComplete);
   return true;

@@ -16,11 +16,11 @@ import {
 const errorSchema = z.object({
   code: z.literal("INDEX_REBUILD_REQUIRED"),
   actualSchemaVersion: z.number().optional(),
-  expectedSchemaVersion: z.literal(4),
+  expectedSchemaVersion: z.literal(5),
 });
 const countSchema = z.object({ count: z.number() });
 
-for (const version of [2, 999]) {
+for (const version of [2, 4, 999]) {
   const root = await createFixtureRoot();
   const dbPath = join(root, "index.db");
   process.env.TRANSCRIPTS_MCP_INDEX = dbPath;
@@ -86,7 +86,7 @@ try {
   }
   await writeSession(malformedRoot, "replacement", [messageLine("user", "replacement")]);
   const rebuilt = await buildIndex(createFixtureRegistry(malformedRoot));
-  assert.deepEqual(rebuilt.schemaReset, { fromVersion: undefined, toVersion: 4 });
+  assert.deepEqual(rebuilt.schemaReset, { fromVersion: undefined, toVersion: 5 });
   assert.equal(
     (await searchTranscripts(createFixtureRegistry(malformedRoot), { query: "replacement" }))
       .length,
