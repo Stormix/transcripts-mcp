@@ -7,7 +7,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { readJsonlLinesAt } from "@transcripts-mcp/core";
 
-import { maxFileSizeBytes, maxGrepLineBytes, maxGrepPatternLength } from "../constants.ts";
+import {
+  candidateWindow,
+  maxFileSizeBytes,
+  maxGrepLineBytes,
+  maxGrepPatternLength,
+} from "../constants.ts";
 import {
   closeGrepFinders,
   grepTranscripts,
@@ -241,13 +246,88 @@ describe("grep transcripts", () => {
       createFixtureRegistry(root),
       iterate(candidates),
       10,
-      async (filePath, lineNumbers) => {
+      (filePath, pathCandidates) => {
         reads.push(filePath);
-        return readJsonlLinesAt(filePath, lineNumbers);
+        return readJsonlLinesAt(
+          filePath,
+          pathCandidates.map((candidate) => candidate.lineNumber),
+        );
       },
     );
     expect(reads).toEqual([path]);
     expect(hits).toHaveLength(3);
+  });
+
+  it("should consume dense rejected candidates once when they cross windows", async () => {
+    const root = await createFixtureRoot();
+    roots.push(root);
+    const lines = Array.from({ length: 300 }, (_, index) =>
+      JSON.stringify({ envelopeOnly: true, noise: `dense-${index}` }),
+    );
+    lines.push(messageLine("user", "dense accepted message"));
+    lines.push(...Array.from({ length: 99 }, () => JSON.stringify({ envelopeOnly: true })));
+    const path = await writeSession(root, "dense", lines);
+    let byteOffset = 0;
+    const candidates = lines.map((line, index) => {
+      const candidate = { path, lineNumber: index + 1, byteOffset };
+      byteOffset += Buffer.byteLength(line) + 1;
+      return candidate;
+    });
+    let consumed = 0;
+    let reads = 0;
+    let candidateStreamClosed = false;
+
+    async function* denseCandidates(): AsyncIterable<CandidateHit> {
+      try {
+        yield* candidates;
+      } finally {
+        candidateStreamClosed = true;
+      }
+    }
+
+    const hits = await normalizeCandidates(
+      createFixtureRegistry(root),
+      denseCandidates(),
+      1,
+      async (_filePath, pathCandidates) => {
+        reads += 1;
+        consumed += pathCandidates.length;
+        return new Map(
+          pathCandidates.flatMap((candidate) => {
+            const line = lines[candidate.lineNumber - 1];
+            return line === undefined ? [] : [[candidate.lineNumber, line]];
+          }),
+        );
+      },
+    );
+
+    expect(hits.map((hit) => hit.lineNumber)).toEqual([301]);
+    expect(consumed).toBe(candidateWindow * 3);
+    expect(reads).toBe(3);
+    expect(candidateStreamClosed).toBe(true);
+  });
+
+  it("should preserve candidate order when byte offsets are nonmonotonic", async () => {
+    const root = await createFixtureRoot();
+    roots.push(root);
+    const lines = [
+      messageLine("user", "first offset"),
+      messageLine("user", "second offset"),
+      messageLine("user", "third offset"),
+    ];
+    const path = await writeSession(root, "offset-order", lines);
+    const secondOffset = Buffer.byteLength(`${lines[0]}\n`);
+    const thirdOffset = secondOffset + Buffer.byteLength(`${lines[1]}\n`);
+    const hits = await normalizeCandidates(
+      createFixtureRegistry(root),
+      iterate([
+        { path, lineNumber: 3, byteOffset: thirdOffset },
+        { path, lineNumber: 1, byteOffset: 0 },
+        { path, lineNumber: 2, byteOffset: secondOffset },
+      ]),
+      3,
+    );
+    expect(hits.map((hit) => hit.lineNumber)).toEqual([3, 1, 2]);
   });
 
   it("should keep results isolated when registries use the same provider with different roots", async () => {
