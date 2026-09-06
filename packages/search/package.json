@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./fts": "./src/fts.ts",
+    "./grep": "./src/grep.ts",
     "./semantic": "./src/semantic.ts"
   },
   "scripts": {

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { readJsonlLinesAt } from "@transcripts-mcp/core";
 
+import { maxFileSizeBytes, maxGrepLineBytes, maxGrepPatternLength } from "../constants.ts";
 import {
   closeGrepFinders,
   grepTranscripts,
@@ -94,6 +95,73 @@ describe("grep transcripts", () => {
     expect(hits[0]?.message.text).toBe("visible unique phrase alpha42");
     expect(hits[0]?.provider).toBe("fixture");
     expect(hits[0]?.sessionId).toBe("one");
+  });
+
+  it("should compile and match a normal fallback regex", async () => {
+    const root = await fixtureWithRawOnlyNoise();
+    const hits = await scanGrep(createFixtureRegistry(root), {
+      query: "visible\\s+unique",
+      mode: "regex",
+    });
+    expect(hits.map((hit) => hit.sessionId)).toEqual(["one"]);
+  });
+
+  it.each([
+    ["invalid syntax", "[", "Invalid regex"],
+    ["nested quantifiers", "(a+)+$", "Unsafe regex"],
+    ["wrapped nested quantifiers", "((a+))+$", "Unsafe regex"],
+    ["overlapping quantified alternatives", "(a|aa)+$", "Unsafe regex"],
+    ["adjacent wildcards", ".*.*X", "Unsafe regex"],
+    ["adjacent repeated literals", "a+a+$", "Unsafe regex"],
+    ["oversized pattern", "x".repeat(maxGrepPatternLength + 1), "Grep pattern exceeds"],
+  ])("should reject %s in fallback regex mode", async (_name, query, message) => {
+    const root = await fixtureWithRawOnlyNoise();
+    await expect(scanGrep(createFixtureRegistry(root), { query, mode: "regex" })).rejects.toThrow(
+      message,
+    );
+  });
+
+  it("should reject an oversized fallback line distinctly", async () => {
+    const root = await createFixtureRoot();
+    roots.push(root);
+    await writeSession(root, "large-line", ["x".repeat(maxGrepLineBytes + 1)]);
+    await expect(scanGrep(createFixtureRegistry(root), { query: "absent" })).rejects.toThrow(
+      "Grep line exceeds",
+    );
+  });
+
+  it("should reject an oversized fallback file distinctly", async () => {
+    const root = await createFixtureRoot();
+    roots.push(root);
+    await writeSession(root, "large-file", ["x".repeat(maxFileSizeBytes + 1)]);
+    await expect(scanGrep(createFixtureRegistry(root), { query: "absent" })).rejects.toThrow(
+      "Grep file exceeds",
+    );
+  });
+
+  it("should reject aggregate fallback byte-budget exhaustion", async () => {
+    const root = await fixtureWithRawOnlyNoise();
+    await expect(
+      scanGrep(createFixtureRegistry(root), { query: "absent" }, { maxBytes: 10 }),
+    ).rejects.toThrow("Grep scan exceeds 10 bytes");
+  });
+
+  it("should reject fallback elapsed-budget exhaustion", async () => {
+    const root = await fixtureWithRawOnlyNoise();
+    let elapsed = 0;
+    await expect(
+      scanGrep(
+        createFixtureRegistry(root),
+        { query: "absent" },
+        {
+          timeoutMs: 5,
+          now: () => {
+            elapsed += 10;
+            return elapsed;
+          },
+        },
+      ),
+    ).rejects.toThrow("Grep scan exceeds 5 milliseconds");
   });
 
   it("should drop a raw-JSON-only grep match that fails parseRawLine", async () => {
