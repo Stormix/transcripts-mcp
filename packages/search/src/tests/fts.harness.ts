@@ -16,6 +16,8 @@ import {
 } from "./helpers.ts";
 
 const root = await createFixtureRoot();
+const secondRoot = await createFixtureRoot();
+const thirdRoot = await createFixtureRoot();
 const indexDir = await mkdtemp(join(tmpdir(), "transcripts-index-"));
 process.env.TRANSCRIPTS_MCP_INDEX = join(indexDir, "index.db");
 
@@ -140,6 +142,60 @@ try {
     );
   }
 
+  await writeSession(root, "scope-a", [messageLine("user", "scope-boundary-term from-a")]);
+  await buildIndex(registry, { full: true });
+  const firstRootHits = await searchTranscripts(registry, {
+    query: "scope-boundary-term",
+    mode: "fts",
+  });
+
+  const secondRegistry = createRegistry([createFixtureAdapter(secondRoot)]);
+  const staleRootHits = await searchTranscripts(secondRegistry, {
+    query: "scope-boundary-term",
+    mode: "fts",
+  });
+  const unavailableRegistry = createRegistry([
+    createFixtureAdapter(join(secondRoot, "unavailable")),
+  ]);
+  const unavailableHits = await searchTranscripts(unavailableRegistry, {
+    query: "scope-boundary-term",
+    mode: "fts",
+  });
+
+  await writeSession(secondRoot, "scope-b", [messageLine("user", "scope-boundary-term from-b")]);
+  await buildIndex(secondRegistry, { full: true });
+  const secondRootHits = await searchTranscripts(secondRegistry, {
+    query: "scope-boundary-term",
+    mode: "fts",
+  });
+
+  await writeSlugSession(thirdRoot, "third-project", "scope-c", [
+    messageLine("user", "scope-boundary-term from-c"),
+  ]);
+  const multiRootRegistry = createRegistry([
+    createFixtureAdapter(secondRoot),
+    createSlugFixtureAdapter(thirdRoot),
+  ]);
+  await buildIndex(multiRootRegistry, { full: true });
+  const multiRootHits = await searchTranscripts(multiRootRegistry, {
+    query: "scope-boundary-term",
+    mode: "fts",
+  });
+
+  if (
+    firstRootHits.length !== 1 ||
+    staleRootHits.length !== 0 ||
+    unavailableHits.length !== 0 ||
+    secondRootHits.length !== 1 ||
+    !secondRootHits[0]?.text.includes("from-b") ||
+    multiRootHits.length !== 2 ||
+    new Set(multiRootHits.map((hit) => hit.provider)).size !== 2
+  ) {
+    throw new Error(
+      `scope mismatch: first=${firstRootHits.length} stale=${staleRootHits.length} unavailable=${unavailableHits.length} second=${secondRootHits.length} multi=${multiRootHits.length}`,
+    );
+  }
+
   console.info(
     `FTS_RESULT:${JSON.stringify({
       ok: true,
@@ -158,9 +214,16 @@ try {
       excludedByMtime: excludedByMtime.length,
       excludedByUntil: excludedByUntil.length,
       authoredTimestamp: offsetDateHits[0]?.timestamp ?? null,
+      firstRootHits: firstRootHits.length,
+      staleRootHits: staleRootHits.length,
+      unavailableHits: unavailableHits.length,
+      secondRootHits: secondRootHits.length,
+      multiRootHits: multiRootHits.length,
     })}`,
   );
 } finally {
   await removeFixtureRoot(root);
+  await removeFixtureRoot(secondRoot);
+  await removeFixtureRoot(thirdRoot);
   await removeFixtureRoot(indexDir);
 }

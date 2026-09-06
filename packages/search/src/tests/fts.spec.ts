@@ -21,6 +21,11 @@ const ftsResultSchema = z.object({
   excludedByMtime: z.number(),
   excludedByUntil: z.number(),
   authoredTimestamp: z.string().nullable(),
+  firstRootHits: z.number(),
+  staleRootHits: z.number(),
+  unavailableHits: z.number(),
+  secondRootHits: z.number(),
+  multiRootHits: z.number(),
 });
 
 describe("fts", () => {
@@ -52,6 +57,11 @@ describe("fts", () => {
     expect(parsed.data.excludedByMtime).toBe(0);
     expect(parsed.data.excludedByUntil).toBe(0);
     expect(parsed.data.authoredTimestamp).toBeNull();
+    expect(parsed.data.firstRootHits).toBe(1);
+    expect(parsed.data.staleRootHits).toBe(0);
+    expect(parsed.data.unavailableHits).toBe(0);
+    expect(parsed.data.secondRootHits).toBe(1);
+    expect(parsed.data.multiRootHits).toBe(2);
     if (process.platform === "win32") {
       expect(parsed.data.slashCwdHits).toBe(1);
     }

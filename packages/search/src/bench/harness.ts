@@ -5,6 +5,8 @@ import { join } from "node:path";
 
 import * as sqliteVec from "sqlite-vec";
 
+import { resolveTranscriptRoot } from "@transcripts-mcp/core";
+
 import { buildIndex, TranscriptIndex, searchTranscripts } from "../fts.ts";
 import { reciprocalRankFusion, type RankedItem } from "../fusion.ts";
 import { grepTranscripts, isGrepAvailable } from "../grep.ts";
@@ -25,6 +27,12 @@ const root = process.argv[2];
 assert.ok(root, "Missing fixture directory");
 process.env.TRANSCRIPTS_MCP_INDEX = join(root, "index.db");
 const registry = await createCorpus(root);
+const scopes = await Promise.all(
+  registry.list().map(async (adapter) => ({
+    provider: adapter.id,
+    root: await resolveTranscriptRoot(adapter.root()),
+  })),
+);
 const measurements: Measurement[] = [];
 const query = { query: "target", limit: 50 };
 
@@ -110,7 +118,7 @@ try {
   measurements.push(
     await measure(
       "fts.warm",
-      () => index.search({ query: "target", limit: 20 }),
+      () => index.search({ query: "target", limit: 20 }, scopes),
       (hits) => checkCount(hits.length, 20),
       20,
     ),
@@ -137,7 +145,7 @@ try {
     vectorAvailable = false;
   }
   const insert = db.prepare(
-    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,effective_timestamp,vector) VALUES (?,1,?,?,'user','target','2026-09-06T00:00:00.000Z',?)",
+    "INSERT INTO embeddings (path,line_number,provider,source_root,session_id,role,text,effective_timestamp,vector) VALUES (?,1,?,'fixture-root',?,'user','target','2026-09-06T00:00:00.000Z',?)",
   );
   db.transaction(() => {
     for (let row = 0; row < messageCount; row += 1) {
@@ -154,6 +162,10 @@ try {
   })();
   const vector = new Float32Array(384);
   vector[0] = 1;
+  const vectorScopes = [
+    { provider: "other", root: "fixture-root" },
+    { provider: "selected", root: "fixture-root" },
+  ];
   for (const [id, provider, native] of [
     ["vector.native", undefined, true],
     ["vector.filtered", "selected", true],
@@ -166,7 +178,7 @@ try {
     measurements.push(
       await measure(
         id,
-        () => searchVectors(db, vector, { query: "target", provider }, 20, native),
+        () => searchVectors(db, vector, { query: "target", provider }, 20, native, vectorScopes),
         (hits) => {
           checkCount(hits.length, 20);
           if (provider !== undefined) assert.ok(hits.every((hit) => hit.provider === provider));

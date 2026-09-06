@@ -1,6 +1,6 @@
 import type { AdapterRegistry, TranscriptAdapter } from "@transcripts-mcp/core";
 
-import type { BuildIndexOptions, SearchHit, SearchQuery } from "./types.ts";
+import type { BuildIndexOptions, SearchHit, SearchQuery, SearchScope } from "./types.ts";
 
 import { Database } from "bun:sqlite";
 import { mkdir, stat } from "node:fs/promises";
@@ -9,7 +9,12 @@ import { dirname, join } from "node:path";
 
 import { z } from "zod";
 
-import { normalizeCwd, readJsonlLines, slugifyCwd } from "@transcripts-mcp/core";
+import {
+  normalizeCwd,
+  readJsonlLines,
+  resolveTranscriptRoot,
+  slugifyCwd,
+} from "@transcripts-mcp/core";
 
 import { schemaVersion, schemaVersionKey } from "./constants.ts";
 import {
@@ -30,6 +35,7 @@ PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS files (
   path TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
+  source_root TEXT NOT NULL,
   session_id TEXT NOT NULL,
   cwd TEXT,
   cwd_norm TEXT,
@@ -40,6 +46,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
   text,
   provider UNINDEXED,
+  source_root UNINDEXED,
   role UNINDEXED,
   cwd UNINDEXED,
   cwd_norm UNINDEXED,
@@ -55,6 +62,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
 
 const fileRowSchema = z.object({
   path: z.string(),
+  provider: z.string(),
+  source_root: z.string(),
   mtime_ms: z.number(),
   size_bytes: z.number(),
 });
@@ -103,11 +112,18 @@ export class TranscriptIndex {
   ): Promise<BuildIndexResult> {
     const resolved = resolveBuildOptions(options);
 
-    const previous = new Map<string, { mtimeMs: number; sizeBytes: number }>();
-    for (const row of this.#db.query("SELECT path, mtime_ms, size_bytes FROM files").all()) {
+    const previous = new Map<
+      string,
+      { provider: string; root: string; mtimeMs: number; sizeBytes: number }
+    >();
+    for (const row of this.#db
+      .query("SELECT path, provider, source_root, mtime_ms, size_bytes FROM files")
+      .all()) {
       const parsed = fileRowSchema.safeParse(row);
       if (!parsed.success) continue;
       previous.set(parsed.data.path, {
+        provider: parsed.data.provider,
+        root: parsed.data.source_root,
         mtimeMs: parsed.data.mtime_ms,
         sizeBytes: parsed.data.size_bytes,
       });
@@ -120,6 +136,7 @@ export class TranscriptIndex {
 
     for (const adapter of registry.list()) {
       if (!(await adapter.isAvailable())) continue;
+      const sourceRoot = await resolveTranscriptRoot(adapter.root());
       for await (const summary of adapter.listSessions({})) {
         seen.add(summary.path);
         const info = await stat(summary.path);
@@ -127,6 +144,8 @@ export class TranscriptIndex {
         if (
           !resolved.full &&
           prior !== undefined &&
+          prior.provider === adapter.id &&
+          prior.root === sourceRoot &&
           prior.mtimeMs === info.mtimeMs &&
           prior.sizeBytes === info.size
         ) {
@@ -135,6 +154,7 @@ export class TranscriptIndex {
         }
         messages += await this.#indexFile(
           adapter,
+          sourceRoot,
           summary.path,
           summary.cwd,
           summary.projectSlug,
@@ -156,15 +176,15 @@ export class TranscriptIndex {
     return { files, messages, skipped, semantic: this.semanticAvailable() };
   }
 
-  search(query: SearchQuery): SearchHit[] {
+  search(query: SearchQuery, scopes: SearchScope[]): SearchHit[] {
     const normalizedQuery = normalizeSearchQueryDates(query);
-    return this.#searchFts(normalizedQuery, normalizedQuery.limit ?? 20);
+    return this.#searchFts(normalizedQuery, normalizedQuery.limit ?? 20, scopes);
   }
 
-  async searchHybrid(query: SearchQuery): Promise<SearchHit[]> {
+  async searchHybrid(query: SearchQuery, scopes: SearchScope[]): Promise<SearchHit[]> {
     const normalizedQuery = normalizeSearchQueryDates(query);
     const limit = normalizedQuery.limit ?? 20;
-    const ftsHits = this.#searchFts(normalizedQuery, limit);
+    const ftsHits = this.#searchFts(normalizedQuery, limit, scopes);
     if (!this.semanticAvailable()) {
       logHybridFallback("no embeddings in index");
       return ftsHits;
@@ -177,7 +197,7 @@ export class TranscriptIndex {
     const useSqliteVec = await this.#ensureSqliteVec();
     return fuseHits(
       ftsHits,
-      searchVectors(this.#db, embedding, normalizedQuery, limit, useSqliteVec),
+      searchVectors(this.#db, embedding, normalizedQuery, limit, useSqliteVec, scopes),
       limit,
     );
   }
@@ -188,9 +208,11 @@ export class TranscriptIndex {
     return this.#sqliteVecLoaded;
   }
 
-  #searchFts(query: SearchQuery, limit: number): SearchHit[] {
+  #searchFts(query: SearchQuery, limit: number, scopes: SearchScope[]): SearchHit[] {
+    if (scopes.length === 0) return [];
     const filters = ["messages_fts MATCH ?"];
     const params: Array<string | number> = [escapeFtsQuery(query.query)];
+    appendScopeFilter(filters, params, scopes);
     if (query.provider !== undefined) {
       filters.push("provider = ?");
       params.push(query.provider);
@@ -240,6 +262,7 @@ export class TranscriptIndex {
 
   async #indexFile(
     adapter: TranscriptAdapter,
+    sourceRoot: string,
     path: string,
     summaryCwd: string | undefined,
     projectSlug: string | undefined,
@@ -273,8 +296,8 @@ export class TranscriptIndex {
     const cwdNorm = cwd === undefined ? null : normalizeCwd(cwd);
     const slug = projectSlug ?? null;
     const insert = this.#db.prepare(
-      `INSERT INTO messages_fts (text, provider, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp, effective_timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages_fts (text, provider, source_root, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp, effective_timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     this.#db.transaction(() => {
       this.#deleteFile(path);
@@ -282,6 +305,7 @@ export class TranscriptIndex {
         insert.run(
           row.text,
           adapter.id,
+          sourceRoot,
           row.role,
           cwd ?? null,
           cwdNorm,
@@ -295,10 +319,20 @@ export class TranscriptIndex {
       }
       this.#db
         .prepare(
-          `INSERT INTO files (path, provider, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO files (path, provider, source_root, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(path, adapter.id, sessionId, cwd ?? null, cwdNorm, slug, mtimeMs, sizeBytes);
+        .run(
+          path,
+          adapter.id,
+          sourceRoot,
+          sessionId,
+          cwd ?? null,
+          cwdNorm,
+          slug,
+          mtimeMs,
+          sizeBytes,
+        );
     })();
     return pending.length;
   }
@@ -368,13 +402,34 @@ export async function searchTranscripts(
   registry: AdapterRegistry,
   query: SearchQuery,
 ): Promise<SearchHit[]> {
-  void registry;
+  const scopes = await resolveSearchScopes(registry);
   const index = new TranscriptIndex();
   try {
-    if (query.mode === "hybrid") return await index.searchHybrid(query);
-    return index.search(query);
+    if (query.mode === "hybrid") return await index.searchHybrid(query, scopes);
+    return index.search(query, scopes);
   } finally {
     index.close();
+  }
+}
+
+async function resolveSearchScopes(registry: AdapterRegistry): Promise<SearchScope[]> {
+  const adapters = await registry.listAvailable();
+  return Promise.all(
+    adapters.map(async (adapter) => ({
+      provider: adapter.id,
+      root: await resolveTranscriptRoot(adapter.root()),
+    })),
+  );
+}
+
+function appendScopeFilter(
+  filters: string[],
+  params: Array<string | number>,
+  scopes: SearchScope[],
+): void {
+  filters.push(`(${scopes.map(() => "(provider = ? AND source_root = ?)").join(" OR ")})`);
+  for (const scope of scopes) {
+    params.push(scope.provider, scope.root);
   }
 }
 
