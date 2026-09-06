@@ -8,11 +8,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { createRegistry, defineJsonlAdapter } from "@transcripts-mcp/core";
+import { grepTranscripts } from "@transcripts-mcp/search/grep";
 
 import { toolNames } from "../constants.ts";
 import { getTranscript } from "../tools/get-transcript.ts";
 import { listProviders } from "../tools/list-providers.ts";
 import { listSessions, registerListSessions } from "../tools/list-sessions.ts";
+import { runTool } from "../utils.ts";
 
 const lineSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
@@ -71,6 +73,13 @@ describe("createServer", () => {
     expect(session.messages).toHaveLength(1);
     expect(session.messageCount).toBe(2);
     expect(session.messages[0]?.text).toBe("hello from user");
+  });
+
+  it("should surface invalid fallback regexes as tool errors", async () => {
+    const { registry } = await createFakeRegistry();
+    const result = await runTool(() => grepTranscripts(registry, { query: "[", mode: "regex" }));
+    expect(result).toMatchObject({ isError: true });
+    expect(result.content[0]?.text).toContain("Invalid regex");
   });
 
   it("should report availability and a session count when list_providers walks a fake root", async () => {

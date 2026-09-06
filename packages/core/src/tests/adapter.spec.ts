@@ -79,6 +79,34 @@ describe("defineJsonlAdapter", () => {
     ]);
   });
 
+  it("should retain only the requested messages while preserving complete counts", async () => {
+    const root = await createTempDir();
+    const lines = Array.from({ length: 100 }, (_, index) =>
+      JSON.stringify({ type: "msg", text: `message-${index}`, role: "user" }),
+    );
+    lines.splice(50, 0, "{invalid json");
+    await writeFile(join(root, "large.jsonl"), `${lines.join("\n")}\n`);
+    const retainedCounts: number[] = [];
+    const adapter = createTestAdapter(root);
+
+    const session = await adapter.readSession(
+      { provider: "test", id: "large" },
+      {
+        messageLimit: 3,
+        onMessagesRetained: (count) => retainedCounts.push(count),
+      },
+    );
+
+    expect(session.messages.map((message) => message.text)).toEqual([
+      "message-0",
+      "message-1",
+      "message-2",
+    ]);
+    expect(session.messageCount).toBe(100);
+    expect(session.parseErrors).toBe(1);
+    expect(Math.max(...retainedCounts)).toBe(3);
+  });
+
   it("should reject an explicit path when the file is outside the session glob", async () => {
     const root = await createTempDir();
     const sessionDirectory = join(root, "sessions");

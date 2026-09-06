@@ -11,7 +11,7 @@ import { globMatches } from "@transcripts-mcp/core";
 
 import { candidateWindow, defaultHitLimit, maxFileSizeBytes, scanTimeoutMs } from "./constants.ts";
 import { normalizeCandidates } from "./normalize.ts";
-import { scanGrep, streamScanCandidates } from "./scan.ts";
+import { createScanBudget, scanGrep, streamScanCandidates, validateGrepPattern } from "./scan.ts";
 import { selectedAdapters } from "./utils.ts";
 
 type FileFinderClass = typeof FileFinder;
@@ -31,6 +31,7 @@ export async function grepTranscripts(
 ): Promise<GrepHit[]> {
   const Finder = await loadFileFinder();
   if (Finder === undefined) return scanGrep(registry, query);
+  validateGrepPattern(query.query, query.mode ?? "plain");
 
   const limit = query.limit ?? defaultHitLimit;
   return normalizeCandidates(registry, streamNativeCandidates(registry, query, Finder), limit);
@@ -42,16 +43,21 @@ async function* streamNativeCandidates(
   Finder: FileFinderClass,
 ): AsyncIterable<CandidateHit> {
   const mode = query.mode ?? "plain";
+  const fallbackBudget = createScanBudget();
   for (const adapter of selectedAdapters(registry, query.provider)) {
     if (!(await adapter.isAvailable())) continue;
     const root = resolve(adapter.root());
     const finder = await finderFor(adapter.id, root, Finder);
     if (finder === undefined) {
-      yield* streamScanCandidates(registry, {
-        query: query.query,
-        mode: query.mode,
-        provider: adapter.id,
-      });
+      yield* streamScanCandidates(
+        registry,
+        {
+          query: query.query,
+          mode: query.mode,
+          provider: adapter.id,
+        },
+        fallbackBudget,
+      );
       continue;
     }
 
