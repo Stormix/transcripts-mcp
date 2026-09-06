@@ -40,6 +40,9 @@ const mcpSchema = z.object({
     }),
   }),
 });
+const claudePluginSchema = pluginSchema
+  .omit({ keywords: true, logo: true, variables: true })
+  .extend({ mcpServers: z.string() });
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPackage = cliPackageSchema.parse(
@@ -52,6 +55,11 @@ const pluginPath = join(repoRoot, "distribution", "plugin", ".cursor-plugin", "p
 const plugin = pluginSchema.parse(JSON.parse(await readFile(pluginPath, "utf8")));
 plugin.version = version;
 await writeFile(pluginPath, `${JSON.stringify(plugin, null, 2)}\n`);
+
+const claudePluginPath = join(repoRoot, "distribution", "plugin", ".claude-plugin", "plugin.json");
+const claudePlugin = claudePluginSchema.parse(JSON.parse(await readFile(claudePluginPath, "utf8")));
+claudePlugin.version = version;
+await writeFile(claudePluginPath, `${JSON.stringify(claudePlugin, null, 2)}\n`);
 
 const mcpPath = join(repoRoot, "distribution", "plugin", "mcp.json");
 const mcp = mcpSchema.parse(JSON.parse(await readFile(mcpPath, "utf8")));

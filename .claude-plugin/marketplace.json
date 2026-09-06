@@ -1,0 +1,13 @@
+{
+  "name": "stormix-plugins",
+  "owner": { "name": "Stormix" },
+  "metadata": {
+    "description": "Plugins for searching local agent session transcripts."
+  },
+  "plugins": [
+    {
+      "name": "transcripts-mcp",
+      "source": "./distribution/plugin"
+    }
+  ]
+}

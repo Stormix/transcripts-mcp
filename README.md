@@ -89,6 +89,27 @@ ln -s /path/to/transcripts-mcp/distribution/plugin ~/.cursor/plugins/local/trans
 
 The plugin includes an MCP configuration pinned to a package version.
 
+### Claude Code plugin
+
+Install the MCP server and transcript-search skill together from the repository's marketplace. Run these commands inside Claude Code:
+
+```text
+/plugin marketplace add Stormix/transcripts-mcp
+/plugin install transcripts-mcp@stormix-plugins
+```
+
+The Claude Code and Cursor plugins share the same version-pinned MCP configuration and skill in [distribution/plugin](distribution/plugin). Requires Node.js 24 or later for the npm launcher.
+
+For local development, run from the repository root:
+
+```bash
+claude --plugin-dir ./distribution/plugin
+```
+
+Check `/mcp` for the transcripts server, then try `/transcripts-mcp:transcript-search`. Run `/reload-plugins` after changing the plugin configuration.
+
+See the [Claude Code plugin docs](https://code.claude.com/docs/en/plugins) for development and troubleshooting.
+
 ## Tools
 
 | Tool                 | Purpose                                                               | Main inputs                                                               |
