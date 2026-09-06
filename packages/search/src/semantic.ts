@@ -13,6 +13,7 @@ import { normalizeSearchQueryDates } from "./utils.ts";
 const semanticStateKey = "semantic_state";
 const semanticIncomplete = "incomplete";
 const semanticComplete = "complete";
+export const semanticCorpusPageSize = 128;
 
 const embeddingRowSchema = z.object({
   path: z.string(),
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
 
 interface SemanticEngine {
   embedText(text: string): Promise<Float32Array | undefined>;
+  embedTexts(texts: readonly string[]): Promise<readonly (Float32Array | undefined)[]>;
   tryLoadSqliteVec(db: Database): boolean;
 }
 
@@ -144,76 +146,125 @@ export function fuseHits(
 }
 
 type EmbedText = (text: string) => Promise<Float32Array | undefined>;
+type CorpusEmbedder =
+  | EmbedText
+  | {
+      embedTexts(texts: readonly string[]): Promise<readonly (Float32Array | undefined)[]>;
+    };
 
-export async function embedCorpus(db: Database, embedText?: EmbedText): Promise<boolean> {
+interface EmbeddedRow {
+  row: z.infer<typeof pendingRowSchema>;
+  vector: Uint8Array;
+}
+
+export async function embedCorpus(db: Database, embedder?: CorpusEmbedder): Promise<boolean> {
   if (corpusIsComplete(db)) {
     setSemanticState(db, semanticComplete);
     return true;
   }
   markSemanticIncomplete(db);
-  const loaded = embedText === undefined ? await loadEngine() : undefined;
-  const embed = embedText ?? loaded?.embedText;
-  if (embed === undefined) return false;
+  const loaded = embedder === undefined ? await loadEngine() : undefined;
+  const selectedEmbedder = embedder ?? loaded;
+  if (selectedEmbedder === undefined) return false;
 
-  const pending = db
-    .query(
-      `SELECT path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp
-       FROM messages_fts
-       WHERE NOT EXISTS (
-         SELECT 1 FROM embeddings
-         WHERE embeddings.path = messages_fts.path
-           AND embeddings.line_number = messages_fts.line_number
-       )`,
-    )
-    .all();
-
+  const selectPage = db.query(
+    `SELECT path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp
+     FROM messages_fts
+     WHERE NOT EXISTS (
+       SELECT 1 FROM embeddings
+       WHERE embeddings.path = messages_fts.path
+         AND embeddings.line_number = messages_fts.line_number
+     )
+       AND (path > ? OR (path = ? AND line_number > ?))
+     ORDER BY path, line_number
+     LIMIT ?`,
+  );
   const insert = db.prepare(
     `INSERT INTO embeddings (path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
-  for (const row of pending) {
-    const parsed = pendingRowSchema.safeParse(row);
-    if (!parsed.success) return false;
-    let vector: Float32Array | undefined;
+  let afterPath = "";
+  let afterLineNumber = 0;
+  for (;;) {
+    const parsedPage = pendingRowSchema
+      .array()
+      .safeParse(selectPage.all(afterPath, afterPath, afterLineNumber, semanticCorpusPageSize));
+    if (!parsedPage.success) return false;
+    if (parsedPage.data.length === 0) break;
+
+    let vectors: readonly (Float32Array | undefined)[];
     try {
-      vector = await embed(parsed.data.text);
+      vectors = await embedPage(
+        selectedEmbedder,
+        parsedPage.data.map((row) => row.text),
+      );
     } catch (error) {
       console.error("semantic embedding failed", error);
       return false;
     }
-    if (
-      vector === undefined ||
-      vector.length !== embeddingDimensions ||
-      vector.some((value) => !Number.isFinite(value))
-    ) {
-      return false;
+    if (vectors.length !== parsedPage.data.length) return false;
+
+    const embeddedRows: EmbeddedRow[] = [];
+    for (const [index, row] of parsedPage.data.entries()) {
+      const vector = vectors[index];
+      if (
+        vector === undefined ||
+        vector.length !== embeddingDimensions ||
+        vector.some((value) => !Number.isFinite(value))
+      ) {
+        return false;
+      }
+      embeddedRows.push({
+        row,
+        vector: new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
+      });
     }
+
     try {
-      insert.run(
-        parsed.data.path,
-        parsed.data.line_number,
-        parsed.data.provider,
-        parsed.data.source_root,
-        parsed.data.session_id,
-        parsed.data.role,
-        parsed.data.text,
-        parsed.data.cwd,
-        parsed.data.cwd_norm,
-        parsed.data.project_slug,
-        parsed.data.timestamp,
-        parsed.data.effective_timestamp,
-        new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
-      );
+      db.transaction(() => {
+        for (const embedded of embeddedRows) {
+          insert.run(
+            embedded.row.path,
+            embedded.row.line_number,
+            embedded.row.provider,
+            embedded.row.source_root,
+            embedded.row.session_id,
+            embedded.row.role,
+            embedded.row.text,
+            embedded.row.cwd,
+            embedded.row.cwd_norm,
+            embedded.row.project_slug,
+            embedded.row.timestamp,
+            embedded.row.effective_timestamp,
+            embedded.vector,
+          );
+        }
+      })();
     } catch (error) {
       console.error("semantic embedding insert failed", error);
       return false;
     }
+
+    const last = parsedPage.data.at(-1);
+    if (last === undefined) return false;
+    afterPath = last.path;
+    afterLineNumber = last.line_number;
   }
 
   if (!corpusIsComplete(db)) return false;
   setSemanticState(db, semanticComplete);
   return true;
+}
+
+async function embedPage(
+  embedder: CorpusEmbedder,
+  texts: readonly string[],
+): Promise<readonly (Float32Array | undefined)[]> {
+  if (typeof embedder !== "function") return embedder.embedTexts(texts);
+  const vectors: (Float32Array | undefined)[] = [];
+  for (const text of texts) vectors.push(await embedder(text));
+  return vectors;
 }
 
 function setSemanticState(db: Database, state: string): void {
