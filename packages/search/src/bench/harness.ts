@@ -1,12 +1,11 @@
 import { Database } from "bun:sqlite";
 import assert from "node:assert/strict";
+import { realpath } from "node:fs/promises";
 import { cpus } from "node:os";
 import { join } from "node:path";
 
 import * as sqliteVec from "sqlite-vec";
 import { z } from "zod";
-
-import { resolveTranscriptRoot } from "@transcripts-mcp/core";
 
 import { buildIndex, TranscriptIndex, searchTranscripts } from "../fts.ts";
 import { reciprocalRankFusion, type RankedItem } from "../fusion.ts";
@@ -31,7 +30,7 @@ const registry = await createCorpus(root);
 const scopes = await Promise.all(
   registry.list().map(async (adapter) => ({
     provider: adapter.id,
-    root: await resolveTranscriptRoot(adapter.root()),
+    root: await realpath(adapter.root()),
   })),
 );
 const measurements: Measurement[] = [];
