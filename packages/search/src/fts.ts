@@ -18,9 +18,10 @@ import {
   embedQuery,
   ensureSemanticSchema,
   fuseHits,
-  hasEmbeddings,
   loadSqliteVec,
+  markSemanticIncomplete,
   searchVectors,
+  semanticIndexComplete,
 } from "./semantic.ts";
 import { normalizeSearchQueryDates } from "./utils.ts";
 
@@ -93,7 +94,7 @@ export class TranscriptIndex {
   }
 
   semanticAvailable(): boolean {
-    return hasEmbeddings(this.#db);
+    return semanticIndexComplete(this.#db);
   }
 
   async build(
@@ -306,6 +307,7 @@ export class TranscriptIndex {
     this.#db.run("DELETE FROM messages_fts WHERE path = ?", [path]);
     this.#db.run("DELETE FROM files WHERE path = ?", [path]);
     deleteEmbeddings(this.#db, path);
+    markSemanticIncomplete(this.#db);
   }
 
   #ensureSchema(): void {
@@ -330,6 +332,7 @@ export class TranscriptIndex {
     this.#db.exec("DROP TABLE IF EXISTS messages_fts");
     this.#db.exec("DROP TABLE IF EXISTS files");
     this.#db.exec("DROP TABLE IF EXISTS embeddings");
+    markSemanticIncomplete(this.#db);
   }
 }
 

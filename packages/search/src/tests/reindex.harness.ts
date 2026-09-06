@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createRegistry } from "@transcripts-mcp/core";
 
 import { TranscriptIndex } from "../fts.ts";
+import { embedCorpus } from "../semantic.ts";
 import {
   createFixtureAdapter,
   createFixtureRoot,
@@ -22,12 +23,9 @@ const db = new Database(dbPath);
 try {
   const adapter = createFixtureAdapter(root);
   const registry = createRegistry([adapter]);
-  const path = await writeSession(root, "one", [messageLine("user", "originalterm")]);
+  await writeSession(root, "one", [messageLine("user", "originalterm")]);
   await index.build(registry);
-  db.run(
-    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,effective_timestamp,vector) VALUES (?,1,'fixture','one','user','originalterm','2026-09-06T00:00:00.000Z',?)",
-    [path, new Uint8Array(new Float32Array([1, 0]).buffer)],
-  );
+  assert.equal(await embedCorpus(db, async () => new Float32Array(384)), true);
   const originalFiles = db.query("SELECT * FROM files").all();
   await writeSession(root, "one", [
     messageLine("user", "replacementterm first"),

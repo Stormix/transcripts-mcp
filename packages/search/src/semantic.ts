@@ -6,8 +6,13 @@ import { z } from "zod";
 
 import { matchesCwdFilter } from "@transcripts-mcp/core";
 
+import { embeddingDimensions } from "./constants.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
 import { normalizeSearchQueryDates } from "./utils.ts";
+
+const semanticStateKey = "semantic_state";
+const semanticIncomplete = "incomplete";
+const semanticComplete = "complete";
 
 const embeddingRowSchema = z.object({
   path: z.string(),
@@ -65,12 +70,18 @@ let engine: SemanticEngine | undefined;
 let engineFailed = false;
 
 export function ensureSemanticSchema(db: Database): void {
+  db.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
   db.exec(vectorTable);
 }
 
-export function hasEmbeddings(db: Database): boolean {
-  const existing = db.query("SELECT 1 FROM embeddings LIMIT 1").get();
-  return existing !== null && existing !== undefined;
+export function semanticIndexComplete(db: Database): boolean {
+  const state = db.query("SELECT value FROM meta WHERE key = ?").get(semanticStateKey);
+  const parsed = z.object({ value: z.string() }).safeParse(state);
+  return parsed.success && parsed.data.value === semanticComplete && corpusIsComplete(db);
+}
+
+export function markSemanticIncomplete(db: Database): void {
+  setSemanticState(db, semanticIncomplete);
 }
 
 export function deleteEmbeddings(db: Database, path: string): void {
@@ -128,9 +139,17 @@ export function fuseHits(
   return results;
 }
 
-export async function embedCorpus(db: Database): Promise<boolean> {
-  const loaded = await loadEngine();
-  if (loaded === undefined) return hasEmbeddings(db);
+type EmbedText = (text: string) => Promise<Float32Array | undefined>;
+
+export async function embedCorpus(db: Database, embedText?: EmbedText): Promise<boolean> {
+  if (corpusIsComplete(db)) {
+    setSemanticState(db, semanticComplete);
+    return true;
+  }
+  markSemanticIncomplete(db);
+  const loaded = embedText === undefined ? await loadEngine() : undefined;
+  const embed = embedText ?? loaded?.embedText;
+  if (embed === undefined) return false;
 
   const pending = db
     .query(
@@ -151,26 +170,81 @@ export async function embedCorpus(db: Database): Promise<boolean> {
 
   for (const row of pending) {
     const parsed = pendingRowSchema.safeParse(row);
-    if (!parsed.success) continue;
-    const vector = await loaded.embedText(parsed.data.text);
-    if (vector === undefined) return hasEmbeddings(db);
-    insert.run(
-      parsed.data.path,
-      parsed.data.line_number,
-      parsed.data.provider,
-      parsed.data.session_id,
-      parsed.data.role,
-      parsed.data.text,
-      parsed.data.cwd,
-      parsed.data.cwd_norm,
-      parsed.data.project_slug,
-      parsed.data.timestamp,
-      parsed.data.effective_timestamp,
-      new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
-    );
+    if (!parsed.success) return false;
+    let vector: Float32Array | undefined;
+    try {
+      vector = await embed(parsed.data.text);
+    } catch (error) {
+      console.error("semantic embedding failed", error);
+      return false;
+    }
+    if (
+      vector === undefined ||
+      vector.length !== embeddingDimensions ||
+      vector.some((value) => !Number.isFinite(value))
+    ) {
+      return false;
+    }
+    try {
+      insert.run(
+        parsed.data.path,
+        parsed.data.line_number,
+        parsed.data.provider,
+        parsed.data.session_id,
+        parsed.data.role,
+        parsed.data.text,
+        parsed.data.cwd,
+        parsed.data.cwd_norm,
+        parsed.data.project_slug,
+        parsed.data.timestamp,
+        parsed.data.effective_timestamp,
+        new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
+      );
+    } catch (error) {
+      console.error("semantic embedding insert failed", error);
+      return false;
+    }
   }
 
-  return hasEmbeddings(db);
+  if (!corpusIsComplete(db)) return false;
+  setSemanticState(db, semanticComplete);
+  return true;
+}
+
+function setSemanticState(db: Database, state: string): void {
+  db.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", [semanticStateKey, state]);
+}
+
+function corpusIsComplete(db: Database): boolean {
+  const counts = db
+    .query(
+      `SELECT
+         (SELECT count(*) FROM messages_fts) AS messages,
+         (SELECT count(*) FROM embeddings) AS embeddings`,
+    )
+    .get();
+  const parsedCounts = z.object({ messages: z.number(), embeddings: z.number() }).safeParse(counts);
+  if (!parsedCounts.success || parsedCounts.data.messages < 1) return false;
+  if (parsedCounts.data.messages !== parsedCounts.data.embeddings) return false;
+  const missing = db
+    .query(
+      `SELECT 1
+       FROM messages_fts
+       LEFT JOIN embeddings USING (path, line_number)
+       WHERE embeddings.path IS NULL
+          OR embeddings.provider != messages_fts.provider
+          OR embeddings.session_id != messages_fts.session_id
+          OR embeddings.role != messages_fts.role
+          OR embeddings.text != messages_fts.text
+          OR embeddings.cwd IS NOT messages_fts.cwd
+          OR embeddings.cwd_norm IS NOT messages_fts.cwd_norm
+          OR embeddings.project_slug IS NOT messages_fts.project_slug
+          OR embeddings.timestamp IS NOT messages_fts.timestamp
+          OR embeddings.effective_timestamp != messages_fts.effective_timestamp
+       LIMIT 1`,
+    )
+    .get();
+  return missing === null || missing === undefined;
 }
 
 async function loadEngine(): Promise<SemanticEngine | undefined> {

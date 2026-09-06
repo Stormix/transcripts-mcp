@@ -1,9 +1,10 @@
 import { Database } from "bun:sqlite";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { buildIndex, TranscriptIndex } from "../fts.ts";
+import { embedCorpus } from "../semantic.ts";
 import {
   createFixtureRegistry,
   createFixtureRoot,
@@ -31,23 +32,51 @@ try {
   }
 
   const seed = new Database(dbPath);
+  let partial = false;
+  let partialAvailable = false;
+  let fallback = false;
+  let invalid = false;
+  let thrown = false;
+  let insertionFailure = false;
+  let retried = false;
+  let orphanAvailable = false;
   try {
-    seed.run(
-      `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, timestamp, effective_timestamp, vector)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        join(root, "sessions", "alpha.jsonl"),
-        1,
-        "fixture",
-        "alpha",
-        "user",
-        "unique-fts-term zebra about indexing",
-        null,
-        null,
-        "2026-09-06T00:00:00.000Z",
-        new Uint8Array(16),
-      ],
+    let embeddings = 0;
+    partial = await embedCorpus(seed, async () => {
+      embeddings += 1;
+      return embeddings === 1 ? new Float32Array(384) : undefined;
+    });
+    const partialIndex = new TranscriptIndex(dbPath);
+    try {
+      partialAvailable = partialIndex.semanticAvailable();
+      const firstFallback = await partialIndex.searchHybrid({ query: "unique-fts-term" });
+      const secondFallback = await partialIndex.searchHybrid({ query: "unique-fts-term" });
+      fallback = firstFallback.length === 1 && secondFallback.length === 1;
+    } finally {
+      partialIndex.close();
+    }
+    invalid = await embedCorpus(seed, async () => new Float32Array(2));
+    thrown = await embedCorpus(seed, async () => {
+      throw new Error("injected embedding failure");
+    });
+    seed.exec(
+      "CREATE TRIGGER reject_embedding BEFORE INSERT ON embeddings BEGIN SELECT RAISE(ABORT, 'injected insertion failure'); END",
     );
+    insertionFailure = await embedCorpus(seed, async () => new Float32Array(384));
+    seed.exec("DROP TRIGGER reject_embedding");
+    retried = await embedCorpus(seed, async () => new Float32Array(384));
+    seed.run(
+      `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, effective_timestamp, vector)
+       VALUES ('orphan', 1, 'fixture', 'orphan', 'user', 'orphan', '2026-09-06T00:00:00.000Z', ?)`,
+      [new Uint8Array(new Float32Array(384).buffer)],
+    );
+    const orphanIndex = new TranscriptIndex(dbPath);
+    try {
+      orphanAvailable = orphanIndex.semanticAvailable();
+    } finally {
+      orphanIndex.close();
+    }
+    seed.run("DELETE FROM embeddings WHERE path = 'orphan'");
   } finally {
     seed.close();
   }
@@ -72,11 +101,33 @@ try {
       empty.close();
     }
 
+    await writeSession(root, "alpha", [messageLine("user", "replacement term")]);
+    await reopened.build(registry);
+    const modified = reopened.semanticAvailable();
+    const refreshed = new Database(dbPath);
+    try {
+      await embedCorpus(refreshed, async () => new Float32Array(384));
+    } finally {
+      refreshed.close();
+    }
+    await rm(join(root, "sessions", "alpha.jsonl"));
+    await reopened.build(registry);
+    const deleted = reopened.semanticAvailable();
+
     console.info(
       `SEMANTIC_LIFECYCLE:${JSON.stringify({
         ok: true,
         reopened: true,
         empty: false,
+        partial: partial || partialAvailable,
+        fallback,
+        invalid,
+        thrown,
+        insertionFailure,
+        retried,
+        orphanAvailable,
+        modified,
+        deleted,
         ftsText: top.text,
         ftsSessionId: top.sessionId,
       })}`,
