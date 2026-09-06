@@ -7,7 +7,7 @@ import { parseArgs } from "node:util";
 
 import { z } from "zod";
 
-import { renderReport } from "./report.ts";
+import { hasNewFailures, renderReport } from "./report.ts";
 import { comparisonSchema, sampleSchema, type Sample } from "./types.ts";
 
 const { values } = parseArgs({
@@ -84,12 +84,7 @@ try {
   await writeFile(join(output, "comparison.json"), JSON.stringify(comparison, null, 2) + "\n");
   await writeFile(join(output, "comparison.md"), markdown);
   console.info(markdown);
-  if (
-    head.samples.some((sample) =>
-      sample.measurements.some((row) => row.status === "incorrect" || row.status === "error"),
-    )
-  )
-    process.exitCode = 1;
+  if (hasNewFailures(comparison)) process.exitCode = 1;
 } finally {
   await rm(head.directory, { recursive: true, force: true });
   if (base !== null) await rm(base.directory, { recursive: true, force: true });

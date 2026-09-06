@@ -55,6 +55,31 @@ function cell(numbers: number[], state: Measurement["status"]): string {
   return `${result.median.toFixed(3)} ± ${result.mad.toFixed(3)} ms`;
 }
 
+function isExistingFailure(comparison: Comparison, id: MetricId): boolean {
+  const baseline = comparison.base?.samples.flatMap((sample) =>
+    sample.measurements.filter((row) => row.id === id),
+  );
+  const first = baseline?.[0];
+  if (baseline === undefined || first?.status !== "incorrect" || first.detail === undefined)
+    return false;
+  const head = comparison.head.samples.flatMap((sample) =>
+    sample.measurements.filter((row) => row.id === id),
+  );
+  return [...baseline, ...head].every(
+    (row) => row.status === "incorrect" && row.detail === first.detail,
+  );
+}
+
+export function hasNewFailures(comparison: Comparison): boolean {
+  return comparison.head.samples.some((sample) =>
+    sample.measurements.some(
+      (row) =>
+        row.status === "error" ||
+        (row.status === "incorrect" && !isExistingFailure(comparison, row.id)),
+    ),
+  );
+}
+
 export function renderReport(comparison: Comparison): string {
   const { base, head } = comparison;
   const first = head.samples[0];
@@ -89,6 +114,8 @@ export function renderReport(comparison: Comparison): string {
       assessment = classify(before, after);
       const baseline = median(before);
       if (baseline > 0) delta = `${((median(after) / baseline - 1) * 100).toFixed(1)}%`;
+    } else if (isExistingFailure(comparison, id)) {
+      assessment = "Existing failure on main";
     } else if (baseStatus === "incorrect" && headStatus === "ok") {
       assessment = "Correctness fixed";
     }
@@ -99,7 +126,7 @@ export function renderReport(comparison: Comparison): string {
   const clean = (value: string) => value.replace(/[^a-zA-Z0-9 ._()+:-]/g, " ");
   lines.push(
     "",
-    "A change is flagged only when it exceeds 10% and three times the larger median absolute deviation. This is a noise heuristic, not a statistical significance test. Timing changes are informational; incorrect results fail the benchmark job.",
+    "A change is flagged only when it exceeds 10% and three times the larger median absolute deviation. This is a noise heuristic, not a statistical significance test. Timing changes are informational. New correctness failures and execution errors fail the job; identical assertion failures in every main and PR round remain visible without blocking the PR.",
     "",
     `Runtime: Bun ${clean(environment.bun)}, ${clean(environment.platform)} ${clean(environment.arch)}, ${clean(environment.cpu)}. Same runner, serial execution, alternating revision order. Suite: \`${comparison.suiteHash.slice(0, 12)}\`.`,
     "",

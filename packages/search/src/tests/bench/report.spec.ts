@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classify, median, renderReport, summarize } from "../../bench/report.ts";
+import { classify, hasNewFailures, median, renderReport, summarize } from "../../bench/report.ts";
 import {
   comparisonSchema,
   metricIdSchema,
@@ -97,5 +97,70 @@ describe("benchmark reports", () => {
     const data = comparison([1], [1]);
     data.base = null;
     expect(renderReport(data)).toContain("No valid baseline");
+  });
+});
+
+function markIncorrect(samples: Sample[], detail = "expected 20 results, got 0"): void {
+  for (const item of samples) {
+    const row = item.measurements.find((value) => value.id === "vector.filtered");
+    if (row === undefined) throw new Error("Missing vector metric");
+    row.status = "incorrect";
+    row.detail = detail;
+  }
+}
+
+describe("benchmark failure gate", () => {
+  it("should keep an identical baseline failure visible without blocking the PR", () => {
+    const data = comparison([1, 1, 1], [1, 1, 1]);
+    markIncorrect(data.base?.samples ?? []);
+    markIncorrect(data.head.samples);
+    expect(hasNewFailures(data)).toBe(false);
+    expect(renderReport(data)).toContain(
+      "| incorrect | incorrect | — | Existing failure on main |",
+    );
+  });
+
+  it("should fail when only the PR returns incorrect results", () => {
+    const data = comparison([1, 1, 1], [1, 1, 1]);
+    markIncorrect(data.head.samples);
+    expect(hasNewFailures(data)).toBe(true);
+  });
+
+  it("should fail when the assertion differs from the baseline failure", () => {
+    const data = comparison([1, 1, 1], [1, 1, 1]);
+    markIncorrect(data.base?.samples ?? []);
+    markIncorrect(data.head.samples, "expected 20 results, got 10");
+    expect(hasNewFailures(data)).toBe(true);
+  });
+
+  it("should fail when the baseline failure is intermittent", () => {
+    const data = comparison([1, 1, 1], [1, 1, 1]);
+    markIncorrect(data.base?.samples.slice(0, 1) ?? []);
+    markIncorrect(data.head.samples);
+    expect(hasNewFailures(data)).toBe(true);
+  });
+
+  it("should fail correctness checks when no baseline is provided", () => {
+    const data = comparison([1], [1]);
+    data.base = null;
+    markIncorrect(data.head.samples);
+    expect(hasNewFailures(data)).toBe(true);
+  });
+
+  it("should always fail operational errors even with an incorrect baseline", () => {
+    const data = comparison([1], [1]);
+    markIncorrect(data.base?.samples ?? []);
+    markIncorrect(data.head.samples);
+    const row = data.head.samples[0]?.measurements.find((value) => value.id === "vector.filtered");
+    if (row === undefined) throw new Error("Missing vector metric");
+    row.status = "error";
+    expect(hasNewFailures(data)).toBe(true);
+  });
+
+  it("should pass when the PR fixes a baseline failure", () => {
+    const data = comparison([1], [1]);
+    markIncorrect(data.base?.samples ?? []);
+    expect(hasNewFailures(data)).toBe(false);
+    expect(renderReport(data)).toContain("Correctness fixed");
   });
 });

@@ -106,8 +106,11 @@ mutations and cold initialization are not prewarmed. The full-index case uses a 
 `bench-results/comparison.md` contains medians, median absolute deviations, p95 of
 round averages, percentage changes, and runtime/commit identifiers.
 `comparison.json` retains every measurement and correctness failure. A timing is
-excluded if any sample returned incorrect results. A head-side correctness failure
-or operation error makes the command exit nonzero after writing the report.
+excluded if any sample returned incorrect results. New head-side correctness failures
+and all operation errors make the command exit nonzero after writing the report.
+An identical assertion failure in every baseline and head round is labeled
+"Existing failure on main" and does not block an unrelated PR. Without a baseline,
+all correctness failures still fail the command.
 Unavailable native engines are reported explicitly; their fallback timings are not
 presented as native performance.
 
