@@ -27,7 +27,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.4.0"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -35,6 +35,9 @@ jobs:
       - name: Commitlint
         if: github.event_name == 'pull_request'
         run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+      - name: Check toolchain pins
+        run: pnpm check:toolchain
 
       - name: Lint
         run: pnpm lint

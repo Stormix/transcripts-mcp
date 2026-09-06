@@ -23,6 +23,7 @@
     "start": "pnpm --filter @transcripts-mcp/mcp start",
     "deploy:www": "pnpm --filter @transcripts-mcp/www run deploy",
     "build:cli": "bun scripts/build-cli.ts",
+    "check:toolchain": "bun scripts/check-toolchain.ts",
     "sync:plugin-version": "bun scripts/sync-plugin-version.ts",
     "prepare": "husky"
   },
@@ -50,7 +51,7 @@
     ]
   },
   "engines": {
-    "bun": ">=1.2.0",
+    "bun": ">=1.4.0",
     "node": ">=26.8.1"
   },
   "packageManager": "pnpm@12.3.3"
