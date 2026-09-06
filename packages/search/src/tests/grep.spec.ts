@@ -1,15 +1,24 @@
 import type { CandidateHit } from "../types.ts";
 
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import { readJsonlLinesAt } from "@transcripts-mcp/core";
 
-import { closeGrepFinders, grepTranscripts, isGrepAvailable } from "../grep.ts";
+import {
+  closeGrepFinders,
+  grepTranscripts,
+  isAdapterSessionFile,
+  isGrepAvailable,
+} from "../grep.ts";
 import { normalizeCandidates } from "../normalize.ts";
 import { scanGrep } from "../scan.ts";
 import {
   createFixtureRegistry,
   createFixtureRoot,
+  createFixtureAdapter,
   messageLine,
   removeFixtureRoot,
   writeSession,
@@ -46,6 +55,34 @@ describe("grep transcripts", () => {
     ]);
     return root;
   }
+
+  it("should match only adapter session files when checking finder paths", async () => {
+    const root = await createFixtureRoot();
+    roots.push(root);
+    const adapter = createFixtureAdapter(root);
+
+    expect(isAdapterSessionFile(adapter, "sessions/one.jsonl")).toBe(true);
+    expect(isAdapterSessionFile(adapter, "outside.jsonl")).toBe(false);
+    expect(isAdapterSessionFile(adapter, "sessions\\one.jsonl")).toBe(true);
+  });
+
+  it("should ignore non-session files when native and streaming grep scan the same root", async () => {
+    const root = await createFixtureRoot();
+    roots.push(root);
+    await writeSession(root, "valid", [messageLine("user", "valid-session-token")]);
+    await writeFile(join(root, "outside.jsonl"), `${messageLine("user", "outside-token")}\n`);
+    const registry = createFixtureRegistry(root);
+
+    const nativeOutside = await grepTranscripts(registry, { query: "outside-token" });
+    const streamingOutside = await scanGrep(registry, { query: "outside-token" });
+    expect(nativeOutside).toHaveLength(0);
+    expect(streamingOutside).toHaveLength(0);
+
+    const nativeValid = await grepTranscripts(registry, { query: "valid-session-token" });
+    const streamingValid = await scanGrep(registry, { query: "valid-session-token" });
+    expect(nativeValid.map((hit) => hit.sessionId)).toEqual(["valid"]);
+    expect(streamingValid.map((hit) => hit.sessionId)).toEqual(["valid"]);
+  });
 
   it("should return a normalized hit when the query matches message text", async () => {
     const root = await fixtureWithRawOnlyNoise();
