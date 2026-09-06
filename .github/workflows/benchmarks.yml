@@ -31,6 +31,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/setup@v2
         with:
+          package-json-file: pr/package.json
           runtime: node@24
           install: false
       - uses: oven-sh/setup-bun@v2

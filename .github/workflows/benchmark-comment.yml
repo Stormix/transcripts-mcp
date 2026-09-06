@@ -56,6 +56,7 @@ jobs:
       - uses: pnpm/setup@v2
         if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
         with:
+          package-json-file: trusted/package.json
           runtime: node@24
           install: false
       - uses: oven-sh/setup-bun@v2
