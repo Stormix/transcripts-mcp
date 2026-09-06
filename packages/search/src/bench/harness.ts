@@ -251,6 +251,32 @@ try {
       ),
     );
   }
+  db.transaction(() => {
+    for (let row = messageCount; row < messageCount * 4; row += 1) {
+      const extraVector = new Float32Array(384);
+      extraVector[0] = 1;
+      insert.run(String(row), "other", String(row), new Uint8Array(extraVector.buffer));
+    }
+  })();
+  measurements.push(
+    await measure(
+      "vector.filtered.large",
+      () =>
+        searchVectors(
+          db,
+          vector,
+          { query: "target", provider: "selected" },
+          20,
+          true,
+          vectorScopes,
+        ),
+      (hits) => {
+        checkCount(hits.length, 20);
+        assert.ok(hits.every((hit) => hit.provider === "selected"));
+      },
+      5,
+    ),
+  );
 } finally {
   db.close();
 }

@@ -4,11 +4,12 @@ import type { SearchHit, SearchQuery, SearchScope } from "./types.ts";
 
 import { z } from "zod";
 
-import { matchesCwdFilter } from "@transcripts-mcp/core";
+import { matchesCwdFilter, normalizeCwd, slugifyCwd } from "@transcripts-mcp/core";
 
 import { embeddingDimensions } from "./constants.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
 import { normalizeSearchQueryDates } from "./utils.ts";
+import { VectorTopK } from "./vector-top-k.ts";
 
 const semanticStateKey = "semantic_state";
 const semanticIncomplete = "incomplete";
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
   vector BLOB NOT NULL,
   PRIMARY KEY (path, line_number)
 );
+CREATE INDEX IF NOT EXISTS embeddings_scope_idx ON embeddings(provider, source_root);
 `;
 
 interface SemanticEngine {
@@ -324,17 +326,32 @@ function searchWithCosine(
   limit: number,
   scopes: SearchScope[],
 ): SearchHit[] {
-  const scored: SearchHit[] = [];
-  for (const row of db.query("SELECT * FROM embeddings").all()) {
+  const filter = buildVectorFilter(query, scopes);
+  const topHits = new VectorTopK(limit);
+  for (const row of db
+    .query(
+      `SELECT path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector
+       FROM embeddings
+       WHERE ${filter.clause}`,
+    )
+    .iterate(...filter.params)) {
     const parsed = embeddingRowSchema.safeParse(row);
     if (!parsed.success) continue;
-    if (!matchesFilters(parsed.data, query, scopes)) continue;
-    scored.push(
+    if (
+      query.cwd !== undefined &&
+      !matchesCwdFilter(
+        query.cwd,
+        parsed.data.cwd ?? parsed.data.cwd_norm ?? undefined,
+        parsed.data.project_slug ?? undefined,
+      )
+    ) {
+      continue;
+    }
+    topHits.add(
       toHit(parsed.data, cosineSimilarity(queryVector, float32FromBytes(parsed.data.vector))),
     );
   }
-  scored.sort((left, right) => right.score - left.score);
-  return scored.slice(0, limit);
+  return topHits.toSorted();
 }
 
 function searchWithSqliteVec(
@@ -345,28 +362,26 @@ function searchWithSqliteVec(
   scopes: SearchScope[],
 ): SearchHit[] | undefined {
   try {
-    const scopeParams: string[] = [];
-    const scopeFilter = scopes.map(() => "(provider = ? AND source_root = ?)").join(" OR ");
-    for (const scope of scopes) scopeParams.push(scope.provider, scope.root);
+    const filter = buildVectorFilter(query, scopes);
     const rows = db
       .query(
         `SELECT path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector,
                 vec_distance_cosine(vector, ?) AS distance
          FROM embeddings
-         WHERE ${scopeFilter}
-         ORDER BY distance`,
+         WHERE ${filter.clause}
+         ORDER BY distance, path COLLATE BINARY, line_number
+         LIMIT ?`,
       )
       .iterate(
         new Uint8Array(queryVector.buffer, queryVector.byteOffset, queryVector.byteLength),
-        ...scopeParams,
+        ...filter.params,
+        limit,
       );
     const hits: SearchHit[] = [];
     for (const row of rows) {
       const parsed = embeddingRowSchema.extend({ distance: z.number() }).safeParse(row);
       if (!parsed.success) continue;
-      if (!matchesFilters(parsed.data, query, scopes)) continue;
       hits.push(toHit(parsed.data, 1 - parsed.data.distance));
-      if (hits.length >= limit) break;
     }
     return hits;
   } catch (error) {
@@ -375,37 +390,37 @@ function searchWithSqliteVec(
   }
 }
 
-function matchesFilters(
-  row: {
-    provider: string;
-    source_root: string;
-    role: string;
-    cwd: string | null;
-    cwd_norm: string | null;
-    project_slug: string | null;
-    effective_timestamp: string;
-  },
-  query: SearchQuery,
-  scopes: SearchScope[],
-): boolean {
-  if (!scopes.some((scope) => scope.provider === row.provider && scope.root === row.source_root)) {
-    return false;
+interface VectorFilter {
+  clause: string;
+  params: string[];
+}
+
+function buildVectorFilter(query: SearchQuery, scopes: SearchScope[]): VectorFilter {
+  const params: string[] = [];
+  const scopeClause = scopes.map(() => "(provider = ? AND source_root = ?)").join(" OR ");
+  for (const scope of scopes) params.push(scope.provider, scope.root);
+  const clauses = [`(${scopeClause})`];
+  if (query.provider !== undefined) {
+    clauses.push("provider = ?");
+    params.push(query.provider);
   }
-  if (query.provider !== undefined && row.provider !== query.provider) return false;
-  if (query.role !== undefined && row.role !== query.role) return false;
-  if (
-    query.cwd !== undefined &&
-    !matchesCwdFilter(
-      query.cwd,
-      row.cwd ?? row.cwd_norm ?? undefined,
-      row.project_slug ?? undefined,
-    )
-  ) {
-    return false;
+  if (query.role !== undefined) {
+    clauses.push("role = ?");
+    params.push(query.role);
   }
-  if (query.since !== undefined && row.effective_timestamp < query.since) return false;
-  if (query.until !== undefined && row.effective_timestamp > query.until) return false;
-  return true;
+  if (query.cwd !== undefined) {
+    clauses.push("(cwd_norm = ? OR project_slug = ?)");
+    params.push(normalizeCwd(query.cwd), slugifyCwd(query.cwd));
+  }
+  if (query.since !== undefined) {
+    clauses.push("effective_timestamp >= ?");
+    params.push(query.since);
+  }
+  if (query.until !== undefined) {
+    clauses.push("effective_timestamp <= ?");
+    params.push(query.until);
+  }
+  return { clause: clauses.join(" AND "), params };
 }
 
 function toHit(

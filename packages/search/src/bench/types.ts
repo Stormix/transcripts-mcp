@@ -16,6 +16,7 @@ export const metricLabels = {
   "semantic.build.fake": "Semantic build: fake engine (4,097 messages)",
   "vector.native": "Vector search: SQLite",
   "vector.filtered": "Vector search: SQLite, selective filter",
+  "vector.filtered.large": "Vector search: SQLite, selective filter (16,384 vectors)",
   "vector.cosine": "Vector search: cosine, selective filter",
   fusion: "Rank fusion (2 × 100 hits)",
 } satisfies Record<MetricId, string>;
@@ -36,6 +37,7 @@ export const metricIdSchema = z.enum([
   "semantic.build.fake",
   "vector.native",
   "vector.filtered",
+  "vector.filtered.large",
   "vector.cosine",
   "fusion",
 ]);
