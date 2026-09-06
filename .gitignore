@@ -19,3 +19,5 @@ bench-results/
 packages/search/src/.bench-*/
 .warden/
 .tanstack/
+.deepsec/data/transcripts-mcp/*
+findings/*
