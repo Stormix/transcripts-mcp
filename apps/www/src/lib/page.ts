@@ -22,11 +22,3 @@ export function pageFromPath(pathname: string): PageId {
       return "home";
   }
 }
-
-export function pageFromHtmlFilename(filename: string): PageId {
-  const normalized = filename.replaceAll("\\", "/");
-
-  return (
-    pageIds.find((page) => page !== "home" && normalized.endsWith(`/${page}/index.html`)) ?? "home"
-  );
-}

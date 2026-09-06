@@ -91,7 +91,7 @@ function stripPairedTag(text: string, tag: string): string {
   return result;
 }
 
-export function cleanTitleText(text: string): string {
+function cleanTitleText(text: string): string {
   const userQuery = extractTagInner(text, "user_query");
   if (userQuery !== undefined) return userQuery;
   let cleaned = text;

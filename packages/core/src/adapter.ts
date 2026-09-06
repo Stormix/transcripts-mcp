@@ -28,7 +28,7 @@ export interface TranscriptAdapter {
   readonly sessionFiles: string;
 }
 
-export interface JsonlAdapterSpec<TLine> {
+interface JsonlAdapterSpec<TLine> {
   id: string;
   displayName: string;
   root: () => string;

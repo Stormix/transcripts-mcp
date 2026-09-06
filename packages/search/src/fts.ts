@@ -328,11 +328,11 @@ function logHybridFallback(reason: string): void {
   console.error(`search_transcripts hybrid falling back to fts: ${reason}`);
 }
 
-export function defaultIndexPath(): string {
+function defaultIndexPath(): string {
   return process.env.TRANSCRIPTS_MCP_INDEX ?? join(homedir(), ".transcripts-mcp", "index.db");
 }
 
-export async function ensureIndexDir(dbPath = defaultIndexPath()): Promise<string> {
+async function ensureIndexDir(dbPath = defaultIndexPath()): Promise<string> {
   await mkdir(dirname(dbPath), { recursive: true });
   return dbPath;
 }
@@ -345,15 +345,6 @@ export async function buildIndex(
   const index = new TranscriptIndex(dbPath);
   try {
     return await index.build(registry, options);
-  } finally {
-    index.close();
-  }
-}
-
-export function searchFts(query: SearchQuery): SearchHit[] {
-  const index = new TranscriptIndex();
-  try {
-    return index.search(query);
   } finally {
     index.close();
   }

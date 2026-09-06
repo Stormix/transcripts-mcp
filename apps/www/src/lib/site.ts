@@ -1,5 +1,4 @@
 export const repoUrl = "https://github.com/Stormix/transcripts-mcp";
-export const docsUrl = `${repoUrl}#readme`;
 export const packageName = "transcripts-mcp";
 export const launchCommand = `npx ${packageName}`;
 
@@ -98,12 +97,6 @@ export const tools = [
     desc: "Create or refresh the search index. Pass full to rebuild from scratch.",
     inputs: "full? · semantic?",
   },
-] as const;
-
-export const providers = [
-  { id: "cursor", home: "~/.cursor" },
-  { id: "claude-code", home: "~/.claude" },
-  { id: "codex", home: "~/.codex" },
 ] as const;
 
 export const privacyPath = "/privacy/";

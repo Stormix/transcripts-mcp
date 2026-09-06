@@ -14,7 +14,7 @@ import {
 } from "./content.ts";
 import { claudeRoot, parseIsoDate } from "./utils.ts";
 
-export const claudeCodeLineSchema = z.object({
+const claudeCodeLineSchema = z.object({
   type: z.enum(["user", "assistant"]),
   timestamp: z.string().optional(),
   cwd: z.string().optional(),
@@ -25,9 +25,9 @@ export const claudeCodeLineSchema = z.object({
   }),
 });
 
-export type ClaudeCodeLine = z.infer<typeof claudeCodeLineSchema>;
+type ClaudeCodeLine = z.infer<typeof claudeCodeLineSchema>;
 
-export function claudeCodeToMessage(line: ClaudeCodeLine): Message | null {
+function claudeCodeToMessage(line: ClaudeCodeLine): Message | null {
   return makeMessage(
     toMessageRole(line.message.role ?? line.type),
     joinedText(line.message.content),

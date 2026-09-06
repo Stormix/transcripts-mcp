@@ -8,12 +8,12 @@ import { buildIndex as runBuildIndex } from "@transcripts-mcp/search";
 
 import { runTool } from "../utils.ts";
 
-export const buildIndexInputSchema = z.object({
+const buildIndexInputSchema = z.object({
   full: z.boolean().optional(),
   semantic: z.boolean().optional(),
 });
 
-export type BuildIndexInput = z.infer<typeof buildIndexInputSchema>;
+type BuildIndexInput = z.infer<typeof buildIndexInputSchema>;
 
 export function registerBuildIndex(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
@@ -27,7 +27,7 @@ export function registerBuildIndex(server: McpServer, registry: AdapterRegistry)
   );
 }
 
-export async function buildIndex(registry: AdapterRegistry, input: BuildIndexInput) {
+async function buildIndex(registry: AdapterRegistry, input: BuildIndexInput) {
   const started = Date.now();
   const result = await runBuildIndex(registry, {
     full: input.full,

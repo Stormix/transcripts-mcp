@@ -7,7 +7,7 @@ import * as z from "zod/v4";
 import { defaultSessionLimit } from "../constants.ts";
 import { adaptersFor, parseIso, runTool } from "../utils.ts";
 
-export const listSessionsInputSchema = z.object({
+const listSessionsInputSchema = z.object({
   provider: z.string().optional(),
   cwd: z.string().optional(),
   since: z.string().optional(),

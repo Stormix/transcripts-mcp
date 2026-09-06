@@ -60,26 +60,6 @@ export async function writeSession(root: string, id: string, lines: string[]): P
   return path;
 }
 
-export async function writeBulkSessions(
-  root: string,
-  count: number,
-  linesPerSession: number,
-): Promise<string[]> {
-  const writes: Promise<string>[] = [];
-  for (let sessionIndex = 0; sessionIndex < count; sessionIndex += 1) {
-    const id = `bulk-${String(sessionIndex).padStart(4, "0")}`;
-    const lines: string[] = [];
-    for (let lineIndex = 0; lineIndex < linesPerSession; lineIndex += 1) {
-      const role = lineIndex % 2 === 0 ? "user" : "assistant";
-      const text =
-        lineIndex === 0 ? `target phrase in ${id}` : `filler conversation ${id} line ${lineIndex}`;
-      lines.push(messageLine(role, text));
-    }
-    writes.push(writeSession(root, id, lines));
-  }
-  return Promise.all(writes);
-}
-
 export function messageLine(
   role: "user" | "assistant" | "system",
   text: string,

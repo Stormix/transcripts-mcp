@@ -3,6 +3,7 @@ import type { PageId } from "@/lib/page";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { navLinks, repoUrl } from "@/lib/site";
 import { useScrollToHash } from "@/lib/use-scroll-to-hash";
+import { Link } from "@tanstack/react-router";
 import { Github, Menu } from "lucide-react";
 import { useState } from "react";
 
@@ -17,27 +18,28 @@ export function SiteHeader({ page }: { page: PageId }) {
   return (
     <header className="bg-ink">
       <Container className="flex items-center justify-between py-[22px]">
-        <a
-          href={home ? "#top" : "/"}
+        <Link
+          to="/"
+          hash={home ? "top" : undefined}
           className="flex items-center gap-[11px]"
           onClick={home ? (event) => scrollToHash(event, "#top") : undefined}
         >
           <LogoMark />
           <span className="font-mono text-[14.5px] font-medium text-paper">transcripts-mcp</span>
-        </a>
+        </Link>
 
         <nav className="hidden items-center gap-[30px] lg:flex">
           {navLinks.map((link) => {
-            const href = home ? link.href : `/${link.href}`;
             return (
-              <a
+              <Link
                 key={link.href}
-                href={href}
+                to="/"
+                hash={link.href.slice(1)}
                 onClick={home ? (event) => scrollToHash(event, link.href) : undefined}
                 className="font-body text-[13.5px] text-soft transition-colors hover:text-paper"
               >
                 {link.label}
-              </a>
+              </Link>
             );
           })}
           <a
@@ -64,11 +66,11 @@ export function SiteHeader({ page }: { page: PageId }) {
             </SheetHeader>
             <div className="flex flex-col gap-5 px-4">
               {navLinks.map((link) => {
-                const href = home ? link.href : `/${link.href}`;
                 return (
-                  <a
+                  <Link
                     key={link.href}
-                    href={href}
+                    to="/"
+                    hash={link.href.slice(1)}
                     className="font-body text-base text-soft hover:text-paper"
                     onClick={(event) => {
                       if (home) {
@@ -78,7 +80,7 @@ export function SiteHeader({ page }: { page: PageId }) {
                     }}
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 );
               })}
               <a

@@ -7,7 +7,7 @@ import * as z from "zod/v4";
 import { defaultMessageLimit } from "../constants.ts";
 import { requireAdapter, runTool } from "../utils.ts";
 
-export const getTranscriptInputSchema = z.object({
+const getTranscriptInputSchema = z.object({
   provider: z.string(),
   id: z.string(),
   path: z.string().optional(),

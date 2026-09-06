@@ -33,6 +33,7 @@ pnpm test
 pnpm check-types
 pnpm lint
 pnpm format:check
+pnpm knip
 ```
 
 `pnpm lint:fix` and `pnpm format` apply fixes. New features and bug fixes need tests (`*.spec.ts` under `src/tests/`). Changelog-worthy work also needs a changeset (see `.cursor/rules/090-changesets.mdc`).

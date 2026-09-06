@@ -2,6 +2,8 @@ import { cn } from "cn";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "./ui/button";
+
 export function CopyButton({
   value,
   className,
@@ -26,10 +28,12 @@ export function CopyButton({
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-xs"
       onClick={handleCopy}
-      className={cn("text-faint transition-colors hover:text-paper", className)}
+      className={cn("text-faint hover:bg-transparent hover:text-paper", className)}
       aria-label={copied ? "Copied" : "Copy"}
     >
       {copied ? (
@@ -37,6 +41,6 @@ export function CopyButton({
       ) : (
         <Copy className={cn("size-[14px]", iconClassName)} />
       )}
-    </button>
+    </Button>
   );
 }

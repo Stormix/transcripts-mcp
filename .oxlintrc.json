@@ -30,7 +30,7 @@
     "anti-slop/no-object-parameters": "warn",
     "anti-slop/no-shape-in-symbol-names": "warn"
   },
-  "ignorePatterns": ["dist", ".turbo", "coverage"],
+  "ignorePatterns": ["dist", ".turbo", "coverage", "apps/www/src/routeTree.gen.ts"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",

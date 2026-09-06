@@ -7,6 +7,7 @@ import { Container } from "./container";
 import { CopyButton } from "./copy-button";
 import { ProviderMarks } from "./provider-icon";
 import { SessionPreview } from "./session-preview";
+import { Button } from "./ui/button";
 
 export function Hero() {
   const scrollToHash = useScrollToHash();
@@ -24,21 +25,26 @@ export function Hero() {
               your agent search across all three tools, right from your current chat.
             </p>
             <div className="flex flex-wrap items-center gap-5">
-              <a
-                href={cursorInstallUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Button
+                asChild
+                variant="bare"
+                size="auto"
                 className="install-link inline-flex items-center gap-6 rounded-md bg-coral px-5 py-4 font-semibold text-ink transition-colors hover:bg-paper"
               >
-                Add to Cursor <ArrowUpRight className="size-5" />
-              </a>
-              <a
-                href="#configure"
-                onClick={(event) => scrollToHash(event, "#configure")}
+                <a href={cursorInstallUrl()} target="_blank" rel="noopener noreferrer">
+                  Add to Cursor <ArrowUpRight className="size-5" />
+                </a>
+              </Button>
+              <Button
+                asChild
+                variant="bare"
+                size="auto"
                 className="configure-link inline-flex items-center gap-2 py-3 text-sm text-paper underline-offset-4 hover:underline"
               >
-                Other clients <ArrowDown className="size-4" />
-              </a>
+                <a href="#configure" onClick={(event) => scrollToHash(event, "#configure")}>
+                  Other clients <ArrowDown className="size-4" />
+                </a>
+              </Button>
             </div>
             <div className="flex max-w-full items-center gap-3 font-mono text-sm">
               <span className="text-soft" aria-hidden="true">

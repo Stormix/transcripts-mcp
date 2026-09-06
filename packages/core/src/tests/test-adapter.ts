@@ -5,7 +5,7 @@ import { z } from "zod";
 import { defineJsonlAdapter } from "../adapter";
 import { roleSchema } from "../types";
 
-export const testLineSchema = z.object({
+const testLineSchema = z.object({
   type: z.literal("msg"),
   text: z.string(),
   role: roleSchema,

@@ -15,7 +15,7 @@ import { codexRoot, parseIsoDate } from "./utils.ts";
 
 const uuidAtEnd = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
-export const codexLineSchema = z.object({
+const codexLineSchema = z.object({
   type: z.string(),
   timestamp: z.string().optional(),
   payload: z
@@ -29,9 +29,9 @@ export const codexLineSchema = z.object({
     .optional(),
 });
 
-export type CodexLine = z.infer<typeof codexLineSchema>;
+type CodexLine = z.infer<typeof codexLineSchema>;
 
-export function codexToMessage(line: CodexLine): Message | null {
+function codexToMessage(line: CodexLine): Message | null {
   const payload = line.payload;
   if (payload === undefined || payload.role === undefined || payload.content === undefined) {
     return null;
@@ -44,7 +44,7 @@ export function codexToMessage(line: CodexLine): Message | null {
   );
 }
 
-export function sessionIdFromCodexPath(filePath: string): string {
+function sessionIdFromCodexPath(filePath: string): string {
   const base = basename(filePath, ".jsonl");
   const match = uuidAtEnd.exec(base);
   return match?.[1] ?? base;

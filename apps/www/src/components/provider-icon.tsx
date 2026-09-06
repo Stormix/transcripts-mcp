@@ -3,7 +3,7 @@ import type { ReactNode, SVGProps } from "react";
 import { clients, type ClientId } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-export function ProviderIcon({ id, className }: { id: ClientId; className?: string }) {
+function ProviderIcon({ id, className }: { id: ClientId; className?: string }) {
   switch (id) {
     case "cursor":
       return <CursorMark className={className} />;

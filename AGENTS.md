@@ -52,6 +52,7 @@ Key directories:
 Before the human submits your work, ensure:
 
 - [ ] `pnpm lint:fix` and `pnpm format` have been run
+- [ ] `pnpm knip` passes
 - [ ] `pnpm check-types` passes
 - [ ] Changes are tested (manually at minimum, automated tests preferred)
 - [ ] PR description explains _what_ and _why_, not just _how_
@@ -78,5 +79,6 @@ pnpm dev                    # start apps via turbo
 pnpm check-types
 pnpm lint
 pnpm format
+pnpm knip
 pnpm test
 ```

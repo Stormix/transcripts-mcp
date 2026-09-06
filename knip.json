@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "includeEntryExports": true,
+  "treatConfigHintsAsErrors": true,
+  "vitest": {
+    "entry": [
+      "**/*.{bench,test,test-d,spec,spec-d}.?(c|m)[jt]s?(x)",
+      "**/__mocks__/**/*.?(c|m)[jt]s?(x)",
+      "**/*.harness.ts"
+    ]
+  },
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts"],
+      "project": ["scripts/**/*.ts"]
+    },
+    "packages/cli": {
+      "entry": ["src/cli.ts"]
+    },
+    "packages/search": {
+      "entry": ["src/bench/compare.ts", "src/bench/harness.ts", "src/bench/render.ts"]
+    }
+  }
+}

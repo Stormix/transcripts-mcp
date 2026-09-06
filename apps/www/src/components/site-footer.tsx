@@ -2,6 +2,7 @@ import type { PageId } from "@/lib/page";
 import type { ReactNode } from "react";
 
 import { footerPages, footerProject } from "@/lib/site";
+import { Link } from "@tanstack/react-router";
 
 import { Container } from "./container";
 import { LogoMark } from "./logo-mark";
@@ -23,14 +24,14 @@ export function SiteFooter({ page }: { page: PageId }) {
           <div className="flex flex-1 flex-col gap-10 sm:flex-row sm:justify-end sm:gap-16">
             <FooterCol>
               {footerPages.map((item) => (
-                <a
+                <Link
                   key={item.href}
-                  href={item.href}
+                  to={item.href}
                   aria-current={item.href === `/${page}/` ? "page" : undefined}
                   className="font-body text-[13.5px] text-faint transition-colors hover:text-paper"
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
             </FooterCol>
             <FooterCol>

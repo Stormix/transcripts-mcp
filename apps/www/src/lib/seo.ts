@@ -4,20 +4,20 @@ import { infoPages } from "./info-pages";
 import { privacyEmail } from "./site";
 import { faqItems, faqPath, howItWorks, privacyPath, repoUrl } from "./site";
 
-export const siteOrigin = "https://transcriptsmcp.dev";
-export const siteUrl = `${siteOrigin}/`;
+const siteOrigin = "https://transcriptsmcp.dev";
+const siteUrl = `${siteOrigin}/`;
 export const siteName = "transcripts-mcp";
-export const siteTitle = "transcripts-mcp: search Cursor, Claude Code, Codex sessions";
-export const siteDescription =
+const siteTitle = "transcripts-mcp: search Cursor, Claude Code, Codex sessions";
+const siteDescription =
   "Search Cursor, Claude Code, and Codex session transcripts from any MCP client. Local files only: list sessions, open one, grep, or rank with FTS5.";
-export const ogImagePath = "/og.png";
+const ogImagePath = "/og.png";
 export const ogImageUrl = `${siteOrigin}${ogImagePath}`;
 export const ogImageAlt =
   "transcripts-mcp: search Cursor, Claude Code, and Codex session transcripts from any MCP client";
 export const ogImageWidth = "1200";
 export const ogImageHeight = "630";
 export const themeColor = "#171615";
-export const logoUrl = `${siteOrigin}/logo.png`;
+const logoUrl = `${siteOrigin}/logo.png`;
 
 const organizationId = `${siteUrl}#organization`;
 const websiteId = `${siteUrl}#website`;

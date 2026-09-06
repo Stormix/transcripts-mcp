@@ -31,11 +31,11 @@ export function requireAdapter(registry: AdapterRegistry, provider: string): Tra
   return adapter;
 }
 
-export function jsonResult<T>(value: T) {
+function jsonResult<T>(value: T) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value) }] };
 }
 
-export function errorResult(message: string) {
+function errorResult(message: string) {
   return { content: [{ type: "text" as const, text: message }], isError: true };
 }
 

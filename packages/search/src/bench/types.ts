@@ -38,7 +38,7 @@ export const metricIdSchema = z.enum([
   "fusion",
 ]);
 export type MetricId = z.infer<typeof metricIdSchema>;
-export const measurementSchema = z
+const measurementSchema = z
   .object({
     id: metricIdSchema,
     status: z.enum(["ok", "incorrect", "unavailable", "error"]),
@@ -50,7 +50,7 @@ export const measurementSchema = z
     "Successful measurements require timing",
   );
 export type Measurement = z.infer<typeof measurementSchema>;
-export const environmentSchema = z.object({
+const environmentSchema = z.object({
   bun: z.string().max(100),
   platform: z.string().max(100),
   arch: z.string().max(100),

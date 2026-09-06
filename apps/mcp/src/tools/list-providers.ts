@@ -7,7 +7,7 @@ import { walkGlob, type AdapterRegistry, type TranscriptAdapter } from "@transcr
 import { sessionCountCap } from "../constants.ts";
 import { runTool } from "../utils.ts";
 
-export const listProvidersInputSchema = z.object({});
+const listProvidersInputSchema = z.object({});
 
 export function registerListProviders(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(

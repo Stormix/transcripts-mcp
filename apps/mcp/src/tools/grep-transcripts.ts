@@ -8,14 +8,14 @@ import { grepTranscripts as searchGrep } from "@transcripts-mcp/search";
 
 import { runTool } from "../utils.ts";
 
-export const grepTranscriptsInputSchema = z.object({
+const grepTranscriptsInputSchema = z.object({
   query: z.string().min(1),
   mode: z.enum(["plain", "regex", "fuzzy"]).optional(),
   provider: z.string().optional(),
   limit: z.number().int().positive().max(200).optional(),
 });
 
-export type GrepTranscriptsInput = z.infer<typeof grepTranscriptsInputSchema>;
+type GrepTranscriptsInput = z.infer<typeof grepTranscriptsInputSchema>;
 
 export function registerGrepTranscripts(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
@@ -29,7 +29,7 @@ export function registerGrepTranscripts(server: McpServer, registry: AdapterRegi
   );
 }
 
-export async function grepTranscripts(registry: AdapterRegistry, input: GrepTranscriptsInput) {
+async function grepTranscripts(registry: AdapterRegistry, input: GrepTranscriptsInput) {
   return searchGrep(registry, {
     query: input.query,
     mode: input.mode ?? "fuzzy",

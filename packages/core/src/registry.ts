@@ -54,36 +54,10 @@ export class AdapterRegistry {
   }
 }
 
-const defaultRegistry = new AdapterRegistry();
-
 export function createRegistry(adapters: TranscriptAdapter[] = []): AdapterRegistry {
   const registry = new AdapterRegistry();
   for (const adapter of adapters) {
     registry.register(adapter);
   }
   return registry;
-}
-
-export function register(adapter: TranscriptAdapter): void {
-  defaultRegistry.register(adapter);
-}
-
-export function list(): TranscriptAdapter[] {
-  return defaultRegistry.list();
-}
-
-export function get(id: string): TranscriptAdapter | undefined {
-  return defaultRegistry.get(id);
-}
-
-export function resolve(id: string): Promise<TranscriptAdapter | undefined> {
-  return defaultRegistry.resolve(id);
-}
-
-export function listAvailable(): Promise<TranscriptAdapter[]> {
-  return defaultRegistry.listAvailable();
-}
-
-export function resolveByPath(filePath: string): TranscriptAdapter | undefined {
-  return defaultRegistry.resolveByPath(filePath);
 }

@@ -8,7 +8,7 @@ import { searchTranscripts as runSearch } from "@transcripts-mcp/search";
 
 import { runTool } from "../utils.ts";
 
-export const searchTranscriptsInputSchema = z.object({
+const searchTranscriptsInputSchema = z.object({
   query: z.string().min(1),
   mode: z.enum(["fts", "hybrid"]).optional(),
   provider: z.string().optional(),
@@ -19,7 +19,7 @@ export const searchTranscriptsInputSchema = z.object({
   limit: z.number().int().positive().max(100).optional(),
 });
 
-export type SearchTranscriptsInput = z.infer<typeof searchTranscriptsInputSchema>;
+type SearchTranscriptsInput = z.infer<typeof searchTranscriptsInputSchema>;
 
 export function registerSearchTranscripts(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
@@ -33,7 +33,7 @@ export function registerSearchTranscripts(server: McpServer, registry: AdapterRe
   );
 }
 
-export async function searchTranscripts(registry: AdapterRegistry, input: SearchTranscriptsInput) {
+async function searchTranscripts(registry: AdapterRegistry, input: SearchTranscriptsInput) {
   return runSearch(registry, {
     query: input.query,
     mode: input.mode ?? "fts",

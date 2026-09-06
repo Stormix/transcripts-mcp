@@ -6,6 +6,7 @@ dist
 *.log
 .DS_Store
 coverage
+.bench-*
 .cursor/mcp.json
 .cursor/hooks/state/
 .tmp-compile
@@ -17,3 +18,4 @@ coverage
 bench-results/
 packages/search/src/.bench-*/
 .warden/
+.tanstack/

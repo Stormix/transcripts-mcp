@@ -7,16 +7,16 @@ import { defineJsonlAdapter, type Message, type TranscriptAdapter } from "@trans
 import { contentSchema, firstToolName, joinedText, makeMessage, titleFromText } from "./content.ts";
 import { cursorRoot } from "./utils.ts";
 
-export const cursorLineSchema = z.object({
+const cursorLineSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
   message: z.object({
     content: contentSchema,
   }),
 });
 
-export type CursorLine = z.infer<typeof cursorLineSchema>;
+type CursorLine = z.infer<typeof cursorLineSchema>;
 
-export function cursorToMessage(line: CursorLine): Message | null {
+function cursorToMessage(line: CursorLine): Message | null {
   return makeMessage(
     line.role,
     joinedText(line.message.content),

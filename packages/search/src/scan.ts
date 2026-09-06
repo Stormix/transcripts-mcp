@@ -29,7 +29,7 @@ export async function* streamScanCandidates(
   }
 }
 
-export function lineMatches(line: string, query: string, mode: GrepMode): boolean {
+function lineMatches(line: string, query: string, mode: GrepMode): boolean {
   if (mode === "regex") {
     try {
       return new RegExp(query, "i").test(line);

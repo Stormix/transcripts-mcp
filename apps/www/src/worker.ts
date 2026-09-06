@@ -1,3 +1,5 @@
+import handler from "@tanstack/react-start/server-entry";
+
 import { documentationResponse } from "./lib/documentation-response";
 import { errorResponse } from "./lib/http-error";
 import { markdownForPage } from "./lib/markdown";
@@ -46,7 +48,8 @@ export default {
         return new Response(request.method === "HEAD" ? null : markdownForPage(page), { headers });
       }
       const asset = await env.ASSETS.fetch(request);
-      const response = new Response(asset.body, asset);
+      const rendered = asset.status === 404 ? await handler.fetch(request) : asset;
+      const response = new Response(request.method === "HEAD" ? null : rendered.body, rendered);
       headers.forEach((value, name) => response.headers.set(name, value));
       return response;
     }

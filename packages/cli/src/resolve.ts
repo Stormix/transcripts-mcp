@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 
 import { hostTarget } from "./targets.ts";
 
-export const binaryOverrideEnv = "TRANSCRIPTS_MCP_BINARY";
+const binaryOverrideEnv = "TRANSCRIPTS_MCP_BINARY";
 
 export function overrideBinaryPath(env: NodeJS.ProcessEnv): string | undefined {
   const value = env[binaryOverrideEnv];

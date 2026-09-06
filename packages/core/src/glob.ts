@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 const globSpecials = /[.+^${}()|[\]\\]/g;
 
-export function matchSegment(name: string, pattern: string): boolean {
+function matchSegment(name: string, pattern: string): boolean {
   if (pattern === "*") return true;
   const source = `^${pattern.replace(globSpecials, "\\$&").replaceAll("*", ".*")}$`;
   return new RegExp(source, "i").test(name);

@@ -1,7 +1,7 @@
-export const cliPackageBase = "transcripts-mcp";
+const cliPackageBase = "transcripts-mcp";
 
-export type CliPlatform = "darwin" | "linux" | "win32";
-export type CliArch = "arm64" | "x64";
+type CliPlatform = "darwin" | "linux" | "win32";
+type CliArch = "arm64" | "x64";
 
 export interface CliTarget {
   platform: CliPlatform;

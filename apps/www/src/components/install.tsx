@@ -12,6 +12,7 @@ import { useState, type ReactNode } from "react";
 import { Container } from "./container";
 import { CopyButton } from "./copy-button";
 import { InstallClientIcon } from "./install-client-icon";
+import { Button } from "./ui/button";
 
 export function Install() {
   const [selected, setSelected] = useState<InstallClientId>("cursor");
@@ -110,23 +111,26 @@ function ClientRow({
 
   if (client.href !== null) {
     return (
-      <a
-        href={client.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
-        onClick={() => {
-          onSelect(client.id);
-        }}
-      >
-        {body}
-      </a>
+      <Button asChild variant="bare" size="auto" className={className}>
+        <a
+          href={client.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => {
+            onSelect(client.id);
+          }}
+        >
+          {body}
+        </a>
+      </Button>
     );
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="bare"
+      size="auto"
       className={className}
       onClick={() => {
         onSelect(client.id);
@@ -134,7 +138,7 @@ function ClientRow({
       }}
     >
       {body}
-    </button>
+    </Button>
   );
 }
 

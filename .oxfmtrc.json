@@ -37,5 +37,12 @@
     ]
   },
   "sortPackageJson": true,
-  "ignorePatterns": ["dist", ".turbo", "coverage", "pnpm-lock.yaml", ".wrangler"]
+  "ignorePatterns": [
+    "dist",
+    ".turbo",
+    "coverage",
+    "pnpm-lock.yaml",
+    ".wrangler",
+    "apps/www/src/routeTree.gen.ts"
+  ]
 }

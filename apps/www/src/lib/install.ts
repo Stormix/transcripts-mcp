@@ -11,7 +11,7 @@ export type InstallClientId =
   | "chatgpt"
   | "manual";
 
-export type InstallAction = "deeplink" | "copy-cli" | "copy-config" | "remote-note";
+type InstallAction = "deeplink" | "copy-cli" | "copy-config" | "remote-note";
 
 export type SnippetKind = "json" | "toml" | "cli" | "note";
 
@@ -26,9 +26,9 @@ export interface InstallClient {
   href: string | null;
 }
 
-export const serverName = "transcripts";
+const serverName = "transcripts";
 
-export const mcpServersJson = `{
+const mcpServersJson = `{
   "mcpServers": {
     "transcripts": {
       "command": "npx",
@@ -37,11 +37,11 @@ export const mcpServersJson = `{
   }
 }`;
 
-export const claudeCli = `claude mcp add --scope user transcripts -- npx -y ${packageName}`;
-export const geminiCli = `gemini mcp add --scope user transcripts npx -y ${packageName}`;
-export const codexCli = `codex mcp add transcripts -- npx -y ${packageName}`;
+const claudeCli = `claude mcp add --scope user transcripts -- npx -y ${packageName}`;
+const geminiCli = `gemini mcp add --scope user transcripts npx -y ${packageName}`;
+const codexCli = `codex mcp add transcripts -- npx -y ${packageName}`;
 
-export const chatgptNote =
+const chatgptNote =
   "ChatGPT connectors need a remote HTTPS MCP URL. This server runs locally over stdio and reads files on this machine.";
 
 const stdioConfigJson = JSON.stringify({
@@ -53,7 +53,7 @@ export function cursorInstallUrl(): string {
   return `https://cursor.com/en/install-mcp?name=${encodeURIComponent(serverName)}&config=${encodeURIComponent(btoa(stdioConfigJson))}`;
 }
 
-export function vscodeInstallUrl(): string {
+function vscodeInstallUrl(): string {
   const payload = JSON.stringify({
     name: serverName,
     command: "npx",
