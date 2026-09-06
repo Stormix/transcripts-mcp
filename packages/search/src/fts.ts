@@ -99,7 +99,6 @@ export class TranscriptIndex {
     options: BuildIndexOptions | boolean = {},
   ): Promise<BuildIndexResult> {
     const resolved = resolveBuildOptions(options);
-    if (resolved.full) this.#reset();
 
     const previous = new Map<string, { mtimeMs: number; sizeBytes: number }>();
     for (const row of this.#db.query("SELECT path, mtime_ms, size_bytes FROM files").all()) {
@@ -238,7 +237,6 @@ export class TranscriptIndex {
     mtimeMs: number,
     sizeBytes: number,
   ): Promise<number> {
-    this.#deleteFile(path);
     const sessionId = adapter.sessionIdFromPath(path);
     let cwd = summaryCwd;
     const pending: Array<{
@@ -267,26 +265,29 @@ export class TranscriptIndex {
       `INSERT INTO messages_fts (text, provider, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
-    for (const row of pending) {
-      insert.run(
-        row.text,
-        adapter.id,
-        row.role,
-        cwd ?? null,
-        cwdNorm,
-        slug,
-        sessionId,
-        path,
-        row.lineNumber,
-        row.timestamp,
-      );
-    }
-    this.#db
-      .prepare(
-        `INSERT INTO files (path, provider, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(path, adapter.id, sessionId, cwd ?? null, cwdNorm, slug, mtimeMs, sizeBytes);
+    this.#db.transaction(() => {
+      this.#deleteFile(path);
+      for (const row of pending) {
+        insert.run(
+          row.text,
+          adapter.id,
+          row.role,
+          cwd ?? null,
+          cwdNorm,
+          slug,
+          sessionId,
+          path,
+          row.lineNumber,
+          row.timestamp,
+        );
+      }
+      this.#db
+        .prepare(
+          `INSERT INTO files (path, provider, session_id, cwd, cwd_norm, project_slug, mtime_ms, size_bytes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(path, adapter.id, sessionId, cwd ?? null, cwdNorm, slug, mtimeMs, sizeBytes);
+    })();
     return pending.length;
   }
 
@@ -294,12 +295,6 @@ export class TranscriptIndex {
     this.#db.run("DELETE FROM messages_fts WHERE path = ?", [path]);
     this.#db.run("DELETE FROM files WHERE path = ?", [path]);
     deleteEmbeddings(this.#db, path);
-  }
-
-  #reset(): void {
-    this.#db.exec("DELETE FROM messages_fts");
-    this.#db.exec("DELETE FROM files");
-    this.#db.exec("DELETE FROM embeddings");
   }
 
   #ensureSchema(): void {

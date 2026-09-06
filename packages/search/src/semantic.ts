@@ -92,6 +92,7 @@ export function searchVectors(
   limit: number,
   useSqliteVec: boolean,
 ): SearchHit[] {
+  if (limit < 1) return [];
   if (useSqliteVec) {
     const vecHits = searchWithSqliteVec(db, queryVector, query, limit);
     if (vecHits !== undefined) return vecHits;
@@ -210,13 +211,9 @@ function searchWithSqliteVec(
         `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, vector,
                 vec_distance_cosine(vector, ?) AS distance
          FROM embeddings
-         ORDER BY distance
-         LIMIT ?`,
+         ORDER BY distance`,
       )
-      .all(
-        new Uint8Array(queryVector.buffer, queryVector.byteOffset, queryVector.byteLength),
-        limit * 4,
-      );
+      .iterate(new Uint8Array(queryVector.buffer, queryVector.byteOffset, queryVector.byteLength));
     const hits: SearchHit[] = [];
     for (const row of rows) {
       const parsed = embeddingRowSchema.extend({ distance: z.number() }).safeParse(row);

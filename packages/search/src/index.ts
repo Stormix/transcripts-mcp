@@ -7,7 +7,7 @@ export type {
   SearchHit,
   SearchQuery,
 } from "./types.ts";
-export { grepTranscripts, isGrepAvailable } from "./grep.ts";
+export { closeGrepFinders, grepTranscripts, isGrepAvailable } from "./grep.ts";
 export { lineMatches, scanGrep, streamScanCandidates } from "./scan.ts";
 export { candidateWindow } from "./constants.ts";
 export { normalizeCandidates } from "./normalize.ts";
