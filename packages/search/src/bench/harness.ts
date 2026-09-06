@@ -184,7 +184,9 @@ try {
 } finally {
   semanticDb.close();
 }
-const index = new TranscriptIndex();
+const index: TranscriptIndex = Object.hasOwn(TranscriptIndex, "open")
+  ? TranscriptIndex.open()
+  : Reflect.construct(TranscriptIndex, []);
 try {
   measurements.push(
     await measure(

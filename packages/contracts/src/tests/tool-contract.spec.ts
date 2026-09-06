@@ -7,11 +7,18 @@ import {
   renderToolContractMarkdown,
   toolContractList,
   toolContracts,
+  toolErrorContracts,
   toolNames,
 } from "../index.ts";
 
 const repoRoot = join(import.meta.dirname, "../../../..");
 const contractSurfaces = ["README.md", "distribution/plugin/skills/transcript-search/SKILL.md"];
+const indexRecoverySurfaces = [
+  "README.md",
+  "packages/cli/README.md",
+  "distribution/plugin/skills/transcript-search/SKILL.md",
+  "apps/www/src/lib/site.ts",
+];
 
 describe("tool contract", () => {
   it("should list each tool exactly once when metadata is enumerated", () => {
@@ -106,6 +113,19 @@ describe("tool contract", () => {
     for (const mode of search.inputs.mode.values) expect(search.description).toContain(mode);
     expect(search.description).toContain(`${search.inputs.mode.default} (default)`);
   });
+
+  it.each(indexRecoverySurfaces)(
+    "should keep index recovery identifiers synchronized in %s",
+    async (relativePath) => {
+      const source = await readFile(join(repoRoot, relativePath), "utf8");
+      const recovery = toolErrorContracts.indexRebuildRequired;
+      expect(source).toContain(recovery.code);
+      expect(source).toContain(recovery.recovery.tool);
+      expect(source).toContain("full: true");
+      expect(source).toContain("semantic: true");
+      expect(source).toContain("TRANSCRIPTS_MCP_INDEX");
+    },
+  );
 
   it("should name the stale surface when a documented maximum changes", async () => {
     const source = await readFile(join(repoRoot, "README.md"), "utf8");

@@ -4,6 +4,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./errors": "./src/errors.ts",
     "./fts": "./src/fts.ts",
     "./grep": "./src/grep.ts",
     "./semantic": "./src/semantic.ts"

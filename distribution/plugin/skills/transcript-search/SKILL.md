@@ -49,6 +49,8 @@ Use `search_transcripts` when you want BM25-ranked results over normalized messa
 1. Call `build_index` before the first FTS search. Incremental is the default; `full: true` rebuilds from scratch.
 2. Call `build_index` again with `semantic: true` before `mode: "hybrid"`. First semantic build downloads ~23 MB ONNX (`all-MiniLM-L6-v2`).
 
+If search returns `INDEX_REBUILD_REQUIRED` after a server upgrade, call `build_index` with `full: true`. This replaces only the local cache. Use `semantic: true` to recreate embeddings, and give concurrently running incompatible server versions separate `TRANSCRIPTS_MCP_INDEX` paths.
+
 The server works without the semantic tier. Hybrid is optional. Do not assume embeddings are available until a semantic build succeeds; they are not guaranteed in every published binary.
 
 ## Session id to transcript

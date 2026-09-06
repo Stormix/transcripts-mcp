@@ -34,11 +34,5 @@ async function buildIndex(registry: AdapterRegistry, input: BuildIndexInput) {
     full: input.full,
     semantic: input.semantic,
   });
-  return {
-    files: result.files,
-    messages: result.messages,
-    skipped: result.skipped,
-    semantic: result.semantic,
-    durationMs: Date.now() - started,
-  };
+  return { ...result, durationMs: Date.now() - started };
 }

@@ -2,7 +2,9 @@ import type { AdapterRegistry, TranscriptAdapter } from "@transcripts-mcp/core";
 
 import * as z from "zod/v4";
 
-const caughtSchema = z.object({ message: z.string() });
+import { IndexRebuildRequiredError } from "@transcripts-mcp/search/errors";
+
+const sqliteErrorSchema = z.object({ code: z.string().regex(/^SQLITE_/) });
 
 export function parseIso(value: string | undefined): Date | undefined {
   if (value === undefined) return undefined;
@@ -43,7 +45,20 @@ export async function runTool<T>(run: () => Promise<T>) {
   try {
     return jsonResult(await run());
   } catch (error) {
-    const parsed = caughtSchema.safeParse(error);
-    return errorResult(parsed.success ? parsed.data.message : "unknown error");
+    if (error instanceof IndexRebuildRequiredError) {
+      return errorResult(
+        JSON.stringify({
+          code: error.code,
+          message: error.message,
+          actualSchemaVersion: error.actualSchemaVersion,
+          expectedSchemaVersion: error.expectedSchemaVersion,
+          recovery: error.recovery,
+        }),
+      );
+    }
+    if (sqliteErrorSchema.safeParse(error).success) {
+      return errorResult("local index database error");
+    }
+    return errorResult(error instanceof Error ? error.message : "unknown error");
   }
 }

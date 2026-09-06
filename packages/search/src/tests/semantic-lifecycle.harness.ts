@@ -51,7 +51,7 @@ try {
       embeddings += 1;
       return embeddings === 1 ? new Float32Array(384) : undefined;
     });
-    const partialIndex = new TranscriptIndex(dbPath);
+    const partialIndex = TranscriptIndex.open(dbPath);
     try {
       partialAvailable = partialIndex.semanticAvailable();
       const firstFallback = await partialIndex.searchHybrid({ query: "unique-fts-term" }, scopes);
@@ -79,7 +79,7 @@ try {
        VALUES ('orphan', 1, 'fixture', ?, 'orphan', 'user', 'orphan', '2026-09-06T00:00:00.000Z', ?)`,
       [canonicalRoot, new Uint8Array(new Float32Array(384).buffer)],
     );
-    const orphanIndex = new TranscriptIndex(dbPath);
+    const orphanIndex = TranscriptIndex.open(dbPath);
     try {
       orphanAvailable = orphanIndex.semanticAvailable();
     } finally {
@@ -90,7 +90,7 @@ try {
     seed.close();
   }
 
-  const reopened = new TranscriptIndex(dbPath);
+  const reopened = TranscriptIndex.open(dbPath);
   try {
     if (!reopened.semanticAvailable()) {
       throw new Error("reopened index did not report persisted embeddings");
@@ -101,7 +101,7 @@ try {
       throw new Error(`unexpected FTS hit after reopen: ${top?.sessionId} ${top?.text}`);
     }
 
-    const empty = new TranscriptIndex(join(emptyDir, "empty.db"));
+    const empty = TranscriptIndex.open(join(emptyDir, "empty.db"));
     try {
       if (empty.semanticAvailable()) {
         throw new Error("independent empty database reported semantic availability");
