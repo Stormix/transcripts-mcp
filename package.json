@@ -24,6 +24,7 @@
     "deploy:www": "pnpm --filter @transcripts-mcp/www run deploy",
     "build:cli": "bun scripts/build-cli.ts",
     "check:toolchain": "bun scripts/check-toolchain.ts",
+    "check:versions": "bun scripts/sync-plugin-version.ts --check",
     "sync:plugin-version": "bun scripts/sync-plugin-version.ts",
     "prepare": "husky"
   },

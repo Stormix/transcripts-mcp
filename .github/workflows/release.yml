@@ -31,11 +31,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check version metadata
+        run: pnpm check:versions
+
       - name: Bundle
         run: bun scripts/build-cli.ts --bundle-only
-
-      - name: Sync plugin version
-        run: bun scripts/sync-plugin-version.ts
 
       - name: Upload bundle
         uses: actions/upload-artifact@v7

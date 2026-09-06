@@ -14,8 +14,8 @@ returns Markdown recovery links with HTTP 404 for missing assets. Requests under
 - `/api/docs/{page}`: GET/HEAD for `home`, `developers`, `faq`, `privacy`, `about`,
   or `contact`. GET returns JSON containing the canonical URL and Markdown.
 - `/server.json`: MCP Registry server metadata describing the existing npm
-  package and stdio transport. Update its package and server versions when the
-  published CLI version changes.
+  package and stdio transport. Run `pnpm sync:plugin-version` after changing the
+  CLI package version; `pnpm check:versions` verifies all published metadata.
 
 These endpoints do not expose local transcripts. The OpenAPI document covers
 HTTP documentation retrieval, while MCP clients discover transcript tool schemas
