@@ -118,6 +118,7 @@ export const footerPages = [
 ] as const;
 
 export const footerProject = [
+  { label: "npm", href: "https://www.npmjs.com/package/transcripts-mcp" },
   { label: "GitHub", href: repoUrl },
   { label: "License", href: `${repoUrl}/blob/main/LICENSE` },
 ] as const;

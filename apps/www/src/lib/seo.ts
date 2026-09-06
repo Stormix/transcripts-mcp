@@ -139,6 +139,8 @@ const homeSeo: PageSeo = {
         name: siteName,
         url: siteUrl,
         description: siteDescription,
+        downloadUrl: "https://www.npmjs.com/package/transcripts-mcp",
+        sameAs: [repoUrl, "https://www.npmjs.com/package/transcripts-mcp"],
         applicationCategory: "DeveloperApplication",
         operatingSystem: "Windows, macOS, Linux",
         isAccessibleForFree: true,

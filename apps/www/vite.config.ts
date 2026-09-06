@@ -54,6 +54,15 @@ function seoTags(seo: PageSeo): HtmlTagDescriptor[] {
       attrs: { rel: "alternate", type: "text/markdown", href: `${seo.canonical}index.md` },
     },
     { tag: "link", attrs: { rel: "describedby", href: "/llms.txt" } },
+    {
+      tag: "link",
+      attrs: {
+        rel: "service-desc",
+        type: "application/vnd.oai.openapi+json",
+        href: "/openapi.json",
+      },
+    },
+    { tag: "link", attrs: { rel: "service-doc", href: "/developers/" } },
     { tag: "title", children: seo.title },
     { tag: "meta", attrs: { name: "description", content: seo.description } },
     {

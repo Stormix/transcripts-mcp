@@ -57,9 +57,27 @@ export const infoPages = {
       },
       {
         title: "API keys and transport",
-        body: "No transcripts-mcp API key or account is required. The process uses local stdio, not a hosted REST API or remote MCP endpoint. Your client handles MCP initialization and tools/list discovery. See the homepage Configure section for client-specific installation commands and configuration files.",
+        body: "No transcripts-mcp API key or account is required. The process uses local stdio, not a hosted transcript API or remote MCP endpoint. Your client handles MCP initialization and tools/list discovery. See the homepage Configure section for client-specific installation commands and configuration files.",
         href: "/#configure",
         label: "Client configurations",
+      },
+      {
+        title: "transcripts-mcp OpenAPI and documentation API",
+        body: "GET /api/docs/developers returns public documentation as JSON with page, title, description, url, and markdown fields. Replace developers with home, faq, privacy, about, or contact. No authentication is needed. Send Accept: application/json. This read-only API serves documentation; transcript search remains local. The OpenAPI 3.1 description provides operation IDs, typed parameters, and response schemas for function-calling clients.",
+        href: "/openapi.json",
+        label: "transcripts-mcp OpenAPI specification",
+      },
+      {
+        title: "HTTP errors",
+        body: "API errors use application/problem+json following RFC 9457, with type, title, status, detail, instance, code, and hint fields. Unknown API routes return 404, unsupported methods return 405 with Allow: GET, HEAD, and unsupported formats return 406. Website errors also return JSON when requested with Accept: application/json or application/problem+json. Each documentation request retrieves one page; there is no application-level quota. Cloudflare security controls may reject requests before they reach the application.",
+        href: "/api/docs/developers",
+        label: "Read the developer documentation as JSON",
+      },
+      {
+        title: "transcripts-mcp server manifest",
+        body: "The server.json file uses the official MCP Registry server metadata format and identifies the published npm package and its stdio transport. It can be used to discover and configure a local installation. Hosting this file does not mean the package has been registered in the official MCP Registry. There is no remote Streamable HTTP MCP endpoint on this website; use a client that can launch local stdio servers.",
+        href: "/server.json",
+        label: "transcripts-mcp MCP server manifest",
       },
       {
         title: "When to use this",

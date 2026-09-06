@@ -1,0 +1,222 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "transcripts-mcp documentation API",
+    "version": "1.0.0",
+    "description": "Read-only access to public transcripts-mcp documentation. This API does not search, read, or upload private transcripts and is not an MCP transport. Install the local stdio MCP server described at /server.json to search sessions. No API key or account is required. Responses use application/json; errors use RFC 9457 application/problem+json. Each call retrieves one bounded documentation page. No application-level rate quota is imposed; Cloudflare security controls may reject requests before this Worker.",
+    "contact": {
+      "name": "Stormix",
+      "email": "hello@stormix.co",
+      "url": "https://transcriptsmcp.dev/contact/"
+    },
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://transcriptsmcp.dev",
+      "description": "Public documentation only; no transcript access."
+    }
+  ],
+  "security": [],
+  "externalDocs": {
+    "description": "transcripts-mcp developer portal and local MCP setup",
+    "url": "https://transcriptsmcp.dev/developers/"
+  },
+  "tags": [
+    {
+      "name": "Documentation",
+      "description": "Public product documentation, available without authentication."
+    }
+  ],
+  "paths": {
+    "/api/docs/{page}": {
+      "get": {
+        "operationId": "getDocumentation",
+        "summary": "Read a transcripts-mcp documentation page",
+        "description": "Returns the title, description, canonical URL, and Markdown for one public page. Use developers for MCP setup and tool usage; home for the product overview. Does not read local sessions. Send Accept: application/json.",
+        "tags": ["Documentation"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "description": "Documentation page to retrieve. Use developers for installation, authentication, and MCP tool guidance.",
+            "schema": {
+              "type": "string",
+              "enum": ["home", "privacy", "faq", "about", "contact", "developers"]
+            },
+            "example": "developers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested public documentation page.",
+            "headers": {
+              "Vary": {
+                "description": "Response negotiation dimensions.",
+                "schema": {
+                  "type": "string",
+                  "const": "Accept, Accept-Encoding"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Documentation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The page or API route does not exist.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Only GET and HEAD are supported.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "description": "Supported HTTP methods.",
+                "schema": {
+                  "type": "string",
+                  "const": "GET, HEAD"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "The client does not accept application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "operationId": "getDocumentationHeaders",
+        "summary": "Check a transcripts-mcp documentation page",
+        "description": "Returns the same status and headers as GET without a response body. Send Accept: application/json.",
+        "tags": ["Documentation"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "description": "Documentation page to retrieve. Use developers for installation, authentication, and MCP tool guidance.",
+            "schema": {
+              "type": "string",
+              "enum": ["home", "privacy", "faq", "about", "contact", "developers"]
+            },
+            "example": "developers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The documentation page exists; the body is empty."
+          },
+          "404": {
+            "description": "The page does not exist; the body is empty."
+          },
+          "406": {
+            "description": "The requested representation is unavailable; the body is empty."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Documentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One public documentation page. Markdown is documentation content, not executable tool instructions.",
+        "required": ["page", "title", "description", "url", "markdown"],
+        "properties": {
+          "page": {
+            "type": "string",
+            "enum": ["home", "privacy", "faq", "about", "contact", "developers"],
+            "description": "Stable documentation page identifier."
+          },
+          "title": {
+            "type": "string",
+            "description": "Product-branded page title."
+          },
+          "description": {
+            "type": "string",
+            "description": "Short summary of the page."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical human-readable page URL."
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Complete public page content in Markdown."
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "description": "RFC 9457 Problem Details with stable error codes and recovery hints.",
+        "required": ["type", "title", "status", "detail", "instance", "code", "hint"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "Problem type URI. about:blank uses the HTTP status meaning.",
+            "const": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "description": "HTTP status phrase."
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599,
+            "description": "The HTTP response status."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation of this failure."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "Requested path; query values are omitted."
+          },
+          "code": {
+            "type": "string",
+            "enum": ["not_found", "method_not_allowed", "not_acceptable"],
+            "description": "Stable machine-readable error code."
+          },
+          "hint": {
+            "type": "string",
+            "description": "How to resolve the failure."
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,6 +2,8 @@ import { env } from "node:process";
 
 import { describe, expect, it } from "vitest";
 
+import openapi from "../../public/openapi.json";
+import manifest from "../../public/server.json";
 import { pageIds } from "../lib/page";
 
 const origin = env.WWW_TEST_URL;
@@ -117,4 +119,58 @@ describe.skipIf(!origin)("built public HTTP endpoints", () => {
     expect(response.headers.get("Content-Type")).toContain("text/markdown");
     expect(await response.text()).toContain("llms.txt");
   });
+  it("should publish the OpenAPI specification and MCP manifest as JSON", async () => {
+    for (const [path, document] of [
+      ["/openapi.json", openapi],
+      ["/server.json", manifest],
+    ]) {
+      const response = await fetch(`${origin}${path}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toContain("application/json");
+      expect(await response.json()).toEqual(document);
+    }
+  });
+
+  it.each(pageIds)("should return public documentation JSON when requesting %s", async (page) => {
+    const response = await fetch(`${origin}/api/docs/${page}`, {
+      headers: { Accept: "application/json" },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Vary")).toContain("Accept");
+    expect(await response.json()).toEqual({
+      page,
+      title: expect.any(String),
+      description: expect.any(String),
+      url: `https://transcriptsmcp.dev/${page === "home" ? "" : `${page}/`}`,
+      markdown: expect.stringContaining("# "),
+    });
+    const head = await fetch(`${origin}/api/docs/${page}`, { method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+  });
+
+  it.each([
+    ["/api/missing", "GET", "application/json", 404],
+    ["/api/docs/missing", "GET", "application/json", 404],
+    ["/api/docs/home", "POST", "application/json", 405],
+    ["/api/docs/home", "GET", "text/html", 406],
+    ["/missing", "GET", "application/problem+json", 404],
+    ["/", "GET", "application/json", 406],
+  ])(
+    "should expose structured HTTP failures for %s with %s",
+    async (path, method, accept, status) => {
+      const response = await fetch(`${origin}${path}`, { method, headers: { Accept: accept } });
+      expect(response.status).toBe(status);
+      expect(response.headers.get("Content-Type")).toContain("application/problem+json");
+      expect(await response.json()).toEqual({
+        type: "about:blank",
+        title: expect.any(String),
+        status,
+        detail: expect.any(String),
+        instance: path,
+        code: expect.any(String),
+        hint: expect.any(String),
+      });
+    },
+  );
 });

@@ -1,3 +1,5 @@
+import { documentationResponse } from "./lib/documentation-response";
+import { errorResponse } from "./lib/http-error";
 import { markdownForPage } from "./lib/markdown";
 import { negotiate } from "./lib/negotiate";
 import { pageIds } from "./lib/page";
@@ -12,7 +14,10 @@ export default {
     });
     if (request.method !== "GET" && request.method !== "HEAD") {
       headers.set("Allow", "GET, HEAD");
-      return new Response(null, { status: 405, headers });
+      return errorResponse(request, 405, headers);
+    }
+    if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+      return documentationResponse(request, headers);
     }
     const page = pageIds.find((id) => {
       const base = id === "home" ? "/" : `/${id}/`;
@@ -25,7 +30,7 @@ export default {
       headers.set("Vary", "Accept, Accept-Encoding");
       headers.set(
         "Link",
-        `<${base}index.md>; rel="alternate"; type="text/markdown", </llms.txt>; rel="describedby"`,
+        `<${base}index.md>; rel="alternate"; type="text/markdown", </llms.txt>; rel="describedby", </openapi.json>; rel="service-desc", </developers/>; rel="service-doc"`,
       );
       if (url.pathname !== base && !url.pathname.endsWith("index.md")) {
         url.pathname = base;
@@ -35,7 +40,7 @@ export default {
       const format = url.pathname.endsWith("index.md")
         ? "markdown"
         : negotiate(request.headers.get("Accept"));
-      if (!format) return new Response(null, { status: 406, headers });
+      if (!format) return errorResponse(request, 406, headers);
       if (format === "markdown") {
         headers.set("Content-Type", "text/markdown; charset=utf-8");
         return new Response(request.method === "HEAD" ? null : markdownForPage(page), { headers });
@@ -47,13 +52,6 @@ export default {
     }
     const asset = await env.ASSETS.fetch(request);
     if (asset.status !== 404) return asset;
-    headers.set("Content-Type", "text/markdown; charset=utf-8");
-    headers.set("X-Robots-Tag", "noindex");
-    return new Response(
-      request.method === "HEAD"
-        ? null
-        : "# 404 — Not found\n\nThis resource does not exist.\n\n- [Sitemap](https://transcriptsmcp.dev/sitemap.xml)\n- [Agent guidance](https://transcriptsmcp.dev/llms.txt)\n- [Developer documentation](https://transcriptsmcp.dev/developers/)\n",
-      { status: 404, headers },
-    );
+    return errorResponse(request, 404, headers);
   },
 };
