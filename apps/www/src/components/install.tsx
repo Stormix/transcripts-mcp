@@ -61,7 +61,7 @@ export function Install() {
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-5 lg:sticky lg:top-8 lg:self-start">
-          <div className="overflow-hidden rounded-xl bg-ink">
+          <div className="relative overflow-hidden rounded-xl bg-ink">
             <div className="flex items-center gap-2.5 px-4 py-3">
               <SnippetIcon kind={active.snippetKind} />
               <span className="flex-1 truncate font-mono text-xs text-soft">{active.path}</span>
@@ -69,13 +69,20 @@ export function Install() {
             </div>
             <pre
               key={selected}
+              data-lenis-prevent
               className={cn(
                 "config-snippet overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]",
-                active.snippetKind === "prompt" && "max-h-[460px] overflow-y-auto",
+                active.snippetKind === "prompt" && "max-h-[420px] overflow-y-auto lg:max-h-[560px]",
               )}
             >
               <Snippet kind={active.snippetKind} value={active.copyValue} />
             </pre>
+            {active.snippetKind === "prompt" ? (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-ink to-transparent"
+              />
+            ) : null}
           </div>
         </div>
       </Container>
@@ -106,7 +113,7 @@ function AgentPromptCard({
       className={cn(
         "group flex w-full cursor-pointer items-center gap-3.5 rounded-xl border px-4 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-sunken",
         active
-          ? "border-coral/60 bg-coral/10"
+          ? "border-coral bg-coral/12"
           : "border-line bg-coral/[0.04] hover:border-coral/40 hover:bg-coral/10",
       )}
     >
