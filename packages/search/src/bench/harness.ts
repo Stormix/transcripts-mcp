@@ -11,7 +11,12 @@ import { buildIndex, TranscriptIndex, searchTranscripts } from "../fts.ts";
 import { reciprocalRankFusion, type RankedItem } from "../fusion.ts";
 import { grepTranscripts, isGrepAvailable } from "../grep.ts";
 import { scanGrep } from "../scan.ts";
-import { ensureSemanticSchema, searchVectors } from "../semantic.ts";
+import {
+  embedCorpus,
+  ensureSemanticSchema,
+  searchVectors,
+  semanticCorpusPageSize,
+} from "../semantic.ts";
 import {
   appendMessage,
   checkCount,
@@ -25,7 +30,8 @@ import { sampleSchema, type Measurement, type MetricId } from "./types.ts";
 
 const root = process.argv[2];
 assert.ok(root, "Missing fixture directory");
-process.env.TRANSCRIPTS_MCP_INDEX = join(root, "index.db");
+const indexPath = join(root, "index.db");
+process.env.TRANSCRIPTS_MCP_INDEX = indexPath;
 const registry = await createCorpus(root);
 const scopes = await Promise.all(
   registry.list().map(async (adapter) => ({
@@ -113,6 +119,39 @@ measurements.push(
     },
   ),
 );
+const semanticDb = new Database(indexPath);
+try {
+  ensureSemanticSchema(semanticDb);
+  measurements.push(
+    await measure(
+      "semantic.build.fake",
+      async () => {
+        semanticDb.run("DELETE FROM embeddings");
+        const batchSizes: number[] = [];
+        let embedded = 0;
+        const complete = await embedCorpus(semanticDb, {
+          embedTexts: async (texts) => {
+            batchSizes.push(texts.length);
+            embedded += texts.length;
+            return texts.map(() => new Float32Array(384));
+          },
+        });
+        return { complete, embedded, batchSizes };
+      },
+      (result) => {
+        assert.equal(result.complete, true);
+        checkCount(result.embedded, messageCount + 1);
+        checkCount(
+          result.batchSizes.length,
+          Math.ceil((messageCount + 1) / semanticCorpusPageSize),
+        );
+        assert.ok(result.batchSizes.every((size) => size <= semanticCorpusPageSize));
+      },
+    ),
+  );
+} finally {
+  semanticDb.close();
+}
 const index = new TranscriptIndex();
 try {
   measurements.push(
