@@ -33,8 +33,10 @@ const cliDir = join(repoRoot, "packages", "cli");
 const distDir = join(cliDir, "dist");
 const serverEntry = join(repoRoot, "apps", "mcp", "src", "index.ts");
 const cliEntry = join(cliDir, "src", "cli.ts");
+const smokeEntry = join(cliDir, "src", "tests", "smoke-artifact.ts");
 const serverOut = join(distDir, "server.js");
 const cliOut = join(distDir, "cli.js");
+const smokeOut = join(distDir, "smoke-artifact.js");
 const platformsDir = join(distDir, "platforms");
 
 const args = process.argv.slice(2);
@@ -53,6 +55,8 @@ await writeFile(serverOut, patched);
 
 const cliBundle = await Bun.$`bun build ${cliEntry} --outfile ${cliOut} --target node`.text();
 process.stderr.write(cliBundle);
+const smokeBundle = await Bun.$`bun build ${smokeEntry} --outfile ${smokeOut} --target node`.text();
+process.stderr.write(smokeBundle);
 const cliSource = await readFile(cliOut, "utf8");
 const shebang = "#!/usr/bin/env node\n";
 if (!cliSource.startsWith(shebang)) {
@@ -61,7 +65,7 @@ if (!cliSource.startsWith(shebang)) {
 await writePublishManifest(pkg);
 
 if (bundleOnly) {
-  process.stderr.write("wrote dist/server.js and dist/cli.js\n");
+  process.stderr.write("wrote dist/server.js, dist/cli.js, and dist/smoke-artifact.js\n");
   process.exit(0);
 }
 
