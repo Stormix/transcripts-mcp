@@ -37,6 +37,12 @@ jobs:
       - name: Bundle
         run: bun scripts/build-cli.ts --bundle-only
 
+      - name: Smoke server bundle
+        run: pnpm --filter transcripts-mcp smoke:artifact -- bun dist/server.js
+
+      - name: Smoke public CLI
+        run: pnpm --filter transcripts-mcp smoke:artifact -- node dist/cli.js
+
       - name: Upload bundle
         uses: actions/upload-artifact@v7
         with:
@@ -44,6 +50,7 @@ jobs:
           path: |
             packages/cli/dist/cli.js
             packages/cli/dist/server.js
+            packages/cli/dist/smoke-artifact.js
             packages/cli/dist/publish-package.json
 
   compile:
@@ -55,14 +62,19 @@ jobs:
         include:
           - os: ubuntu-latest
             only: linux-x64
+            binary: transcripts-mcp
           - os: ubuntu-24.04-arm
             only: linux-arm64
+            binary: transcripts-mcp
           - os: windows-latest
             only: win32-x64
+            binary: transcripts-mcp.exe
           - os: macos-latest
             only: darwin-arm64
+            binary: transcripts-mcp
           - os: macos-15-intel
             only: darwin-x64
+            binary: transcripts-mcp
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -85,6 +97,9 @@ jobs:
 
       - name: Compile host binary
         run: bun scripts/build-cli.ts --only=${{ matrix.only }}
+
+      - name: Smoke host binary
+        run: pnpm --filter transcripts-mcp smoke:artifact -- dist/platforms/${{ matrix.only }}/${{ matrix.binary }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v7
@@ -149,6 +164,25 @@ jobs:
           name: cli-darwin-x64
           path: packages/cli/dist/platforms/darwin-x64
 
+      - name: Validate staged main package
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage=packages/cli/dist/stage
+          mkdir -p "$stage/dist"
+          cp packages/cli/dist/publish-package.json "$stage/package.json"
+          cp packages/cli/dist/cli.js packages/cli/dist/server.js "$stage/dist/"
+          cp packages/cli/README.md "$stage/"
+          npm pack --dry-run "$stage"
+          pack_dir=$(mktemp -d)
+          trap 'rm -rf "$pack_dir"' EXIT
+          tarball=$(npm pack "$stage" --pack-destination "$pack_dir")
+          mkdir -p "$pack_dir/extracted"
+          tar -xzf "$pack_dir/$tarball" -C "$pack_dir/extracted"
+          chmod +x packages/cli/dist/platforms/linux-x64/transcripts-mcp
+          TRANSCRIPTS_MCP_BINARY="$PWD/packages/cli/dist/platforms/linux-x64/transcripts-mcp" \
+            node packages/cli/dist/smoke-artifact.js node "$pack_dir/extracted/package/dist/cli.js"
+
       # No NODE_AUTH_TOKEN: npm only falls back to OIDC when it finds no token.
       # Access and registry come from each package's publishConfig.
       - name: Publish platform packages
@@ -159,14 +193,7 @@ jobs:
           done
 
       - name: Publish main package
-        run: |
-          set -euo pipefail
-          stage=packages/cli/dist/stage
-          mkdir -p "$stage/dist"
-          cp packages/cli/dist/publish-package.json "$stage/package.json"
-          cp packages/cli/dist/cli.js packages/cli/dist/server.js "$stage/dist/"
-          cp packages/cli/README.md "$stage/"
-          npm publish "$stage"
+        run: npm publish packages/cli/dist/stage
 
       - name: Attach binaries to GitHub Release
         uses: softprops/action-gh-release@v3
