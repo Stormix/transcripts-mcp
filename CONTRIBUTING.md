@@ -2,7 +2,7 @@
 
 ## Development
 
-Requires [Bun](https://bun.sh) >= 1.2, [Node](https://nodejs.org) >= 24, and [pnpm](https://pnpm.io) 11.
+Requires [Bun](https://bun.sh) >= 1.2, [Node](https://nodejs.org) >= 26.8.1, and [pnpm](https://pnpm.io) 12.
 
 ```bash
 git clone https://github.com/Stormix/transcripts-mcp.git

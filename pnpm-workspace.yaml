@@ -4,6 +4,8 @@ packages:
   - tools/*
   - distribution/*
 
+minimumReleaseAge: 2880
+
 catalog:
   "@oxlint/plugins": ^1.78.0
   "@types/bun": ^1.3.9

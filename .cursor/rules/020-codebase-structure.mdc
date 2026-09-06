@@ -25,7 +25,7 @@ pnpm + Turborepo monorepo. Scope is `@transcripts-mcp/*`. Libraries export TypeS
 
 ### Config
 
-- `package.json` — root scripts and engines (`bun >= 1.2`, `node >= 24`, `pnpm@11`)
+- `package.json` — root scripts and engines (`bun >= 1.2`, `node >= 26.8.1`, `pnpm@12`)
 - `pnpm-workspace.yaml` — workspaces + catalog
 - `turbo.json` — `dev`, `build`, `check-types`
 - `.oxlintrc.json` — OxLint + anti-slop
