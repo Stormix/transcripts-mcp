@@ -12,3 +12,10 @@ export function claudeRoot(): string {
 export function codexRoot(): string {
   return process.env.CODEX_HOME ?? join(homedir(), ".codex");
 }
+
+export function parseIsoDate(value: string | undefined): Date | undefined {
+  if (value === undefined) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date;
+}

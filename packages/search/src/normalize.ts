@@ -2,7 +2,7 @@ import type { CandidateHit, GrepHit } from "./types.ts";
 
 import { readJsonlLinesAt, type AdapterRegistry } from "@transcripts-mcp/core";
 
-export const candidateWindow = 128;
+import { candidateWindow } from "./constants.ts";
 
 export type LineReader = (
   path: string,

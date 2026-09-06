@@ -54,13 +54,6 @@ export function toMessageRole(role: "user" | "assistant" | "system" | "tool" | "
   }
 }
 
-export function parseIsoDate(value: string | undefined): Date | undefined {
-  if (value === undefined) return undefined;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date;
-}
-
 const titleWrapperTags = [
   "timestamp",
   "app-context",

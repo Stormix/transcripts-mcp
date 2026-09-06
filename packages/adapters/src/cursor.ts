@@ -5,7 +5,7 @@ import { z } from "zod";
 import { defineJsonlAdapter, type Message, type TranscriptAdapter } from "@transcripts-mcp/core";
 
 import { contentSchema, firstToolName, joinedText, makeMessage, titleFromText } from "./content.ts";
-import { cursorRoot } from "./roots.ts";
+import { cursorRoot } from "./utils.ts";
 
 export const cursorLineSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),

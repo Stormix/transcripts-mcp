@@ -8,11 +8,10 @@ import {
   contentPartSchema,
   joinedText,
   makeMessage,
-  parseIsoDate,
   titleFromText,
   toMessageRole,
 } from "./content.ts";
-import { codexRoot } from "./roots.ts";
+import { codexRoot, parseIsoDate } from "./utils.ts";
 
 const uuidAtEnd = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 

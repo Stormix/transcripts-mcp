@@ -6,7 +6,7 @@ import * as z from "zod/v4";
 
 import { buildIndex as runBuildIndex } from "@transcripts-mcp/search";
 
-import { runTool } from "../result.ts";
+import { runTool } from "../utils.ts";
 
 export const buildIndexInputSchema = z.object({
   full: z.boolean().optional(),

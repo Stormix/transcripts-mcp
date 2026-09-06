@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { normalizeCwd, readJsonlLines, slugifyCwd } from "@transcripts-mcp/core";
 
+import { schemaVersion, schemaVersionKey } from "./constants.ts";
 import {
   deleteEmbeddings,
   embedCorpus,
@@ -21,9 +22,6 @@ import {
   loadSqliteVec,
   searchVectors,
 } from "./semantic.ts";
-
-const schemaVersion = 2;
-const schemaVersionKey = "schema_version";
 
 const schema = `
 PRAGMA journal_mode = WAL;

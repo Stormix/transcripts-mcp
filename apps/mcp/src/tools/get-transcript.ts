@@ -4,10 +4,8 @@ import type { AdapterRegistry, Session } from "@transcripts-mcp/core";
 
 import * as z from "zod/v4";
 
-import { runTool } from "../result.ts";
-import { requireAdapter } from "../select.ts";
-
-const defaultMessageLimit = 200;
+import { defaultMessageLimit } from "../constants.ts";
+import { requireAdapter, runTool } from "../utils.ts";
 
 export const getTranscriptInputSchema = z.object({
   provider: z.string(),

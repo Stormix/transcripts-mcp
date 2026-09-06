@@ -9,11 +9,10 @@ import {
   firstToolName,
   joinedText,
   makeMessage,
-  parseIsoDate,
   titleFromText,
   toMessageRole,
 } from "./content.ts";
-import { claudeRoot } from "./roots.ts";
+import { claudeRoot, parseIsoDate } from "./utils.ts";
 
 export const claudeCodeLineSchema = z.object({
   type: z.enum(["user", "assistant"]),

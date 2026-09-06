@@ -7,12 +7,10 @@ import type { CandidateHit, GrepHit, GrepQuery } from "./types.ts";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { candidateWindow, normalizeCandidates } from "./normalize.ts";
+import { candidateWindow, defaultHitLimit, maxFileSizeBytes, scanTimeoutMs } from "./constants.ts";
+import { normalizeCandidates } from "./normalize.ts";
 import { scanGrep, streamScanCandidates } from "./scan.ts";
-import { selectedAdapters } from "./select.ts";
-
-const maxFileSizeBytes = 10 * 1024 * 1024;
-const scanTimeoutMs = 60_000;
+import { selectedAdapters } from "./utils.ts";
 
 type FileFinderClass = typeof FileFinder;
 
@@ -32,7 +30,7 @@ export async function grepTranscripts(
   const Finder = await loadFileFinder();
   if (Finder === undefined) return scanGrep(registry, query);
 
-  const limit = query.limit ?? 50;
+  const limit = query.limit ?? defaultHitLimit;
   return normalizeCandidates(registry, streamNativeCandidates(registry, query, Finder), limit);
 }
 

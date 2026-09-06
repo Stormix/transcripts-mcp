@@ -4,11 +4,8 @@ import type { AdapterRegistry, ListOptions, SessionSummary } from "@transcripts-
 
 import * as z from "zod/v4";
 
-import { parseIso } from "../iso.ts";
-import { runTool } from "../result.ts";
-import { adaptersFor } from "../select.ts";
-
-const defaultLimit = 50;
+import { defaultSessionLimit } from "../constants.ts";
+import { adaptersFor, parseIso, runTool } from "../utils.ts";
 
 export const listSessionsInputSchema = z.object({
   provider: z.string().optional(),
@@ -40,7 +37,7 @@ export async function listSessions(
     throw new Error(`Unknown provider: ${input.provider}`);
   }
 
-  const limit = input.limit ?? defaultLimit;
+  const limit = input.limit ?? defaultSessionLimit;
   const opts = toListOptions(input, limit);
   const sessions: SessionSummary[] = [];
 

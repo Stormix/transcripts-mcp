@@ -4,16 +4,15 @@ import { pipeline, Tensor } from "@huggingface/transformers";
 import * as sqliteVec from "sqlite-vec";
 import { z } from "zod";
 
-const MODEL_ID = "Xenova/all-MiniLM-L6-v2";
-const EMBEDDING_DIMENSIONS = 384;
+import { embeddingDimensions as modelEmbeddingDimensions, modelId } from "./constants.ts";
 
 const tensorSchema = z.object({
   data: z.instanceof(Float32Array),
 });
 
-const nestedVectorSchema = z.array(z.array(z.number()).min(EMBEDDING_DIMENSIONS));
+const nestedVectorSchema = z.array(z.array(z.number()).min(modelEmbeddingDimensions));
 
-const flatVectorSchema = z.array(z.number()).min(EMBEDDING_DIMENSIONS);
+const flatVectorSchema = z.array(z.number()).min(modelEmbeddingDimensions);
 
 type FeatureExtractor = (
   text: string,
@@ -24,7 +23,7 @@ let extractor: FeatureExtractor | undefined;
 let extractorFailed = false;
 
 export function embeddingDimensions(): number {
-  return EMBEDDING_DIMENSIONS;
+  return modelEmbeddingDimensions;
 }
 
 export async function embedText(text: string): Promise<Float32Array | undefined> {
@@ -53,7 +52,7 @@ async function loadExtractor(): Promise<FeatureExtractor | undefined> {
   if (extractorFailed) return undefined;
   if (extractor !== undefined) return extractor;
   try {
-    const loaded = await pipeline("feature-extraction", MODEL_ID, { dtype: "fp32" });
+    const loaded = await pipeline("feature-extraction", modelId, { dtype: "fp32" });
     extractor = async (text, options) => {
       const output = await loaded(text, options);
       return parsePipelineOutput(output);
@@ -80,7 +79,7 @@ function parsePipelineOutput(output: Tensor): Float32Array | undefined {
 }
 
 function firstDimensions(values: Float32Array): Float32Array | undefined {
-  if (values.length < EMBEDDING_DIMENSIONS) return undefined;
-  if (values.length === EMBEDDING_DIMENSIONS) return values;
-  return values.slice(0, EMBEDDING_DIMENSIONS);
+  if (values.length < modelEmbeddingDimensions) return undefined;
+  if (values.length === modelEmbeddingDimensions) return values;
+  return values.slice(0, modelEmbeddingDimensions);
 }

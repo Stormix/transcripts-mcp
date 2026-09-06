@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { createRegistry, defineJsonlAdapter } from "@transcripts-mcp/core";
 
-import { toolNames } from "../tool-names.ts";
+import { toolNames } from "../constants.ts";
 import { getTranscript } from "../tools/get-transcript.ts";
 import { listProviders } from "../tools/list-providers.ts";
 import { listSessions, registerListSessions } from "../tools/list-sessions.ts";

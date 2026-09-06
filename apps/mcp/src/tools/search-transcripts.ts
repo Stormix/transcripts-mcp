@@ -6,7 +6,7 @@ import * as z from "zod/v4";
 
 import { searchTranscripts as runSearch } from "@transcripts-mcp/search";
 
-import { runTool } from "../result.ts";
+import { runTool } from "../utils.ts";
 
 export const searchTranscriptsInputSchema = z.object({
   query: z.string().min(1),

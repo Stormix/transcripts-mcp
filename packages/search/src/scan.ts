@@ -7,11 +7,12 @@ import { createInterface } from "node:readline";
 
 import { walkGlob } from "@transcripts-mcp/core";
 
+import { defaultHitLimit } from "./constants.ts";
 import { normalizeCandidates } from "./normalize.ts";
-import { selectedAdapters } from "./select.ts";
+import { selectedAdapters } from "./utils.ts";
 
 export async function scanGrep(registry: AdapterRegistry, query: GrepQuery): Promise<GrepHit[]> {
-  const limit = query.limit ?? 50;
+  const limit = query.limit ?? defaultHitLimit;
   return normalizeCandidates(registry, streamScanCandidates(registry, query), limit);
 }
 

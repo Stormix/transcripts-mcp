@@ -4,9 +4,8 @@ import * as z from "zod/v4";
 
 import { walkGlob, type AdapterRegistry, type TranscriptAdapter } from "@transcripts-mcp/core";
 
-import { runTool } from "../result.ts";
-
-const sessionCountCap = 5000;
+import { sessionCountCap } from "../constants.ts";
+import { runTool } from "../utils.ts";
 
 export const listProvidersInputSchema = z.object({});
 
