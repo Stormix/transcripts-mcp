@@ -39,6 +39,9 @@ jobs:
       - name: Check toolchain pins
         run: pnpm check:toolchain
 
+      - name: Check version metadata
+        run: pnpm check:versions
+
       - name: Lint
         run: pnpm lint
 
