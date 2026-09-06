@@ -1,17 +1,10 @@
 ---
-title: Humanizer
-tags: [skill, writing]
-created: 2026-05-10
-updated: 2026-06-13
-summary: Remove AI tells from prose so it reads like a person wrote it.
-aliases: [de-slop, anti-slop]
-credit:
-  authors:
-    - name: blader
-      url: https://github.com/blader
+name: humanizer
+description: Remove AI tells from prose so it reads like a person wrote it.
+license: MIT
+metadata:
   source: blader/humanizer
-  sourceUrl: https://github.com/blader/humanizer
-  license: MIT
+  source-url: https://github.com/blader/humanizer
 ---
 
 # Humanizer

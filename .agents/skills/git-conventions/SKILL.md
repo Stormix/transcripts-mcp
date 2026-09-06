@@ -1,6 +1,6 @@
 ---
 name: git-conventions
-description: Git Conventions: Guidelines for commit messages, branch naming, and version control practices
+description: "Git Conventions: Guidelines for commit messages, branch naming, and version control practices"
 ---
 
 # Git Commit and Version Control Conventions

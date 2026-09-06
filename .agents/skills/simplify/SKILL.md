@@ -1,10 +1,6 @@
 ---
-title: Simplify
-tags: [skill, process, ai]
-created: 2026-06-13
-updated: 2026-06-13
-summary: Simplify scoped code with parallel read-only review subagents, then apply targeted cleanup fixes without a large refactor.
-aliases: [simplify-code, reduce-complexity]
+name: simplify
+description: Simplify scoped code with parallel read-only review subagents, then apply targeted cleanup fixes without a large refactor.
 ---
 
 # Simplify
