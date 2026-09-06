@@ -8,6 +8,15 @@ const lifecycleSchema = z.object({
   ok: z.literal(true),
   reopened: z.boolean(),
   empty: z.boolean(),
+  partial: z.boolean(),
+  fallback: z.boolean(),
+  invalid: z.boolean(),
+  thrown: z.boolean(),
+  insertionFailure: z.boolean(),
+  retried: z.boolean(),
+  orphanAvailable: z.boolean(),
+  modified: z.boolean(),
+  deleted: z.boolean(),
   ftsText: z.string(),
   ftsSessionId: z.string(),
 });
@@ -22,6 +31,12 @@ function runLifecycleHarness(): LifecycleResult {
   });
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || "semantic lifecycle harness failed");
+  }
+  const fallbackDiagnostics = result.stderr.match(
+    /search_transcripts hybrid falling back to fts: no embeddings in index/g,
+  );
+  if (fallbackDiagnostics?.length !== 1) {
+    throw new Error(`expected one hybrid fallback diagnostic, received ${result.stderr}`);
   }
   const line = result.stdout
     .split(/\r?\n/)
@@ -55,5 +70,29 @@ describe("semantic lifecycle", () => {
     const payload = lifecycle();
     expect(payload.ftsText).toContain("unique-fts-term");
     expect(payload.ftsSessionId).toBe("alpha");
+  });
+
+  it("should remain incomplete when semantic construction fails partway", () => {
+    expect(lifecycle().partial).toBe(false);
+    expect(lifecycle().invalid).toBe(false);
+    expect(lifecycle().thrown).toBe(false);
+    expect(lifecycle().insertionFailure).toBe(false);
+  });
+
+  it("should return FTS results when the semantic state is incomplete", () => {
+    expect(lifecycle().fallback).toBe(true);
+  });
+
+  it("should become complete when semantic construction retries successfully", () => {
+    expect(lifecycle().retried).toBe(true);
+  });
+
+  it("should become incomplete when FTS content changes or is deleted", () => {
+    expect(lifecycle().modified).toBe(false);
+    expect(lifecycle().deleted).toBe(false);
+  });
+
+  it("should reject semantic completeness when an orphan embedding exists", () => {
+    expect(lifecycle().orphanAvailable).toBe(false);
   });
 });
