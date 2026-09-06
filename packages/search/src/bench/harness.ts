@@ -16,6 +16,7 @@ import {
   appendMessage,
   checkCount,
   createCorpus,
+  createMetadataCorpus,
   linesPerSession,
   messageCount,
   sessionCount,
@@ -104,6 +105,31 @@ measurements.push(
     3,
   ),
 );
+
+for (const [id, files] of [
+  ["index.unchanged.small", 8],
+  ["index.unchanged.medium", 128],
+  ["index.unchanged.large", 2_048],
+] satisfies Array<[MetricId, number]>) {
+  const freshnessRoot = join(root, id);
+  const freshnessRegistry = await createMetadataCorpus(freshnessRoot, files);
+  process.env.TRANSCRIPTS_MCP_INDEX = join(root, `${id}.db`);
+  const seeded = await buildIndex(freshnessRegistry, { full: true });
+  checkCount(seeded.files, files);
+  measurements.push(
+    await measure(
+      id,
+      () => buildIndex(freshnessRegistry),
+      (result) => {
+        checkCount(result.files, 0);
+        checkCount(result.messages, 0);
+        checkCount(result.skipped, files);
+      },
+      3,
+    ),
+  );
+}
+process.env.TRANSCRIPTS_MCP_INDEX = indexPath;
 await appendMessage(root);
 measurements.push(
   await measure(
