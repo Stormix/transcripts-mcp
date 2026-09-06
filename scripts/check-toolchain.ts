@@ -2,30 +2,22 @@ import { readFile } from "node:fs/promises";
 
 import { z } from "zod";
 
-const toolchainSchema = z.object({
-  nodejs: z.string(),
-  pnpm: z.string(),
-  bun: z.string(),
-});
-
-const entries = Object.fromEntries(
-  (await readFile(".tool-versions", "utf8"))
-    .trim()
-    .split(/\r?\n/)
-    .map((line) => line.split(/\s+/, 2)),
-);
-const versions = toolchainSchema.parse(entries);
 const packageSchema = z.object({
-  engines: z.object({ node: z.string(), bun: z.string() }),
-  packageManager: z.string(),
+  engines: z.object({ node: z.string(), bun: z.string().regex(/^>=\d+\.\d+\.\d+$/) }),
+  packageManager: z.string().regex(/^pnpm@\d+\.\d+\.\d+$/),
 });
 const packageJson = packageSchema.parse(JSON.parse(await readFile("package.json", "utf8")));
+const versions = {
+  nodejs: z
+    .string()
+    .regex(/^\d+\.\d+\.\d+$/)
+    .parse((await readFile(".nvmrc", "utf8")).trim()),
+  pnpm: packageJson.packageManager.slice("pnpm@".length),
+  bun: packageJson.engines.bun.slice(">=".length),
+};
 
 const mismatches: string[] = [];
-check(".nvmrc", (await readFile(".nvmrc", "utf8")).trim(), versions.nodejs);
 check("package.json node engine", packageJson.engines.node, `>=${versions.nodejs}`);
-check("package.json Bun engine", packageJson.engines.bun, `>=${versions.bun}`);
-check("package.json packageManager", packageJson.packageManager, `pnpm@${versions.pnpm}`);
 
 for (const file of [
   ".github/workflows/ci.yml",

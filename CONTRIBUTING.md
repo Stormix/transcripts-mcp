@@ -2,7 +2,7 @@
 
 ## Development
 
-Requires [Bun](https://bun.sh) >= 1.4.0, [Node](https://nodejs.org) >= 26.8.1, and [pnpm](https://pnpm.io) 12.3.3. Exact development and CI pins live in `.tool-versions`.
+Requires [Bun](https://bun.sh) >= 1.4.0, [Node](https://nodejs.org) >= 26.8.1, and [pnpm](https://pnpm.io) 12.3.3. Node is pinned in `.nvmrc`; pnpm is pinned in `package.json`'s `packageManager`. CI uses the Bun minimum from `package.json`'s `engines.bun`.
 
 ```bash
 git clone https://github.com/Stormix/transcripts-mcp.git

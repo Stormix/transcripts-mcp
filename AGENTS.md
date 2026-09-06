@@ -87,7 +87,8 @@ pnpm test
 
 ## Cursor Cloud specific instructions
 
-The repository pins Node 26.8.1, pnpm 12.3.3, and Bun 1.4.0 in `.tool-versions`.
+The repository pins Node 26.8.1 in `.nvmrc` and pnpm 12.3.3 in `package.json`'s
+`packageManager`. CI uses the Bun minimum from `package.json`'s `engines.bun`, currently 1.4.0.
 Cloud images may expose a different Node version first on `PATH`; install or activate the
 repository pin before running project commands. The `install` step runs
 `pnpm install --frozen-lockfile` after activation.
