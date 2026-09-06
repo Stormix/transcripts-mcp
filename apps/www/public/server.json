@@ -7,14 +7,14 @@
     "url": "https://github.com/Stormix/transcripts-mcp",
     "source": "github"
   },
-  "version": "0.0.3",
+  "version": "0.1.0",
   "websiteUrl": "https://transcriptsmcp.dev",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "transcripts-mcp",
-      "version": "0.0.3",
+      "version": "0.1.0",
       "transport": {
         "type": "stdio"
       }

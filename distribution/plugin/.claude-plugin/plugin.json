@@ -1,7 +1,7 @@
 {
   "name": "transcripts-mcp",
   "description": "Search local Cursor, Claude Code, and Codex session transcripts via MCP.",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "author": {
     "name": "Stormix"
   },
