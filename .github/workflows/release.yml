@@ -38,10 +38,10 @@ jobs:
         run: bun scripts/build-cli.ts --bundle-only
 
       - name: Smoke server bundle
-        run: pnpm --filter transcripts-mcp smoke:artifact -- bun dist/server.js
+        run: node packages/cli/dist/smoke-artifact.js bun packages/cli/dist/server.js
 
       - name: Smoke public CLI
-        run: pnpm --filter transcripts-mcp smoke:artifact -- node dist/cli.js
+        run: node packages/cli/dist/smoke-artifact.js node packages/cli/dist/cli.js
 
       - name: Upload bundle
         uses: actions/upload-artifact@v7
@@ -99,7 +99,7 @@ jobs:
         run: bun scripts/build-cli.ts --only=${{ matrix.only }}
 
       - name: Smoke host binary
-        run: pnpm --filter transcripts-mcp smoke:artifact -- dist/platforms/${{ matrix.only }}/${{ matrix.binary }}
+        run: node packages/cli/dist/smoke-artifact.js packages/cli/dist/platforms/${{ matrix.only }}/${{ matrix.binary }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v7
