@@ -1,6 +1,9 @@
 export const candidateWindow = 128;
 export const defaultHitLimit = 50;
 export const maxFileSizeBytes = 10 * 1024 * 1024;
+export const maxGrepLineBytes = 1024 * 1024;
+export const maxGrepPatternLength = 1024;
+export const maxScanBytes = 64 * 1024 * 1024;
 export const scanTimeoutMs = 60_000;
 export const schemaVersion = 4;
 export const schemaVersionKey = "schema_version";

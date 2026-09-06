@@ -1,6 +1,13 @@
 import type { ZodType } from "zod";
 
-import type { ListOptions, Message, Session, SessionRef, SessionSummary } from "./types";
+import type {
+  ListOptions,
+  Message,
+  ReadSessionOptions,
+  Session,
+  SessionRef,
+  SessionSummary,
+} from "./types";
 
 import { stat } from "node:fs/promises";
 
@@ -20,7 +27,7 @@ export interface TranscriptAdapter {
   root(): string;
   isAvailable(): Promise<boolean>;
   listSessions(opts: ListOptions): AsyncIterable<SessionSummary>;
-  readSession(ref: SessionRef): Promise<Session>;
+  readSession(ref: SessionRef, options?: ReadSessionOptions): Promise<Session>;
   parseRawLine(text: string): Message | null;
   cwdFromRawLine(text: string): string | undefined;
   sessionIdFromPath(path: string): string;
@@ -129,7 +136,7 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
         if (opts.limit !== undefined && yielded >= opts.limit) return;
       }
     },
-    async readSession(ref: SessionRef) {
+    async readSession(ref: SessionRef, options: ReadSessionOptions = {}) {
       const filePath = await resolveSessionPath(spec, ref);
       const info = await stat(filePath);
       const messages: Message[] = [];
@@ -138,6 +145,8 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
       let startedAt: Date | undefined;
       let endedAt: Date | undefined;
       let parseErrors = 0;
+      let messageCount = 0;
+      const messageLimit = options.messageLimit ?? Number.POSITIVE_INFINITY;
 
       for await (const text of readJsonlLines(filePath)) {
         const parsed = parseLine(text);
@@ -155,7 +164,9 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
         const mapped = mapLine(parsed.value);
         switch (mapped.kind) {
           case "message":
-            messages.push(mapped.message);
+            messageCount += 1;
+            if (messages.length < messageLimit) messages.push(mapped.message);
+            options.onMessagesRetained?.(messages.length);
             startedAt ??= mapped.message.timestamp;
             if (mapped.message.timestamp !== undefined) endedAt = mapped.message.timestamp;
             break;
@@ -179,7 +190,7 @@ export function defineJsonlAdapter<TLine>(spec: JsonlAdapterSpec<TLine>): Transc
         projectSlug: spec.projectSlugFromPath?.(filePath),
         startedAt,
         endedAt,
-        messageCount: messages.length,
+        messageCount,
         parseErrors,
         path: filePath,
         mtime: info.mtime,

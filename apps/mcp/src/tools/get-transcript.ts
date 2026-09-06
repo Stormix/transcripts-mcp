@@ -33,19 +33,15 @@ export async function getTranscript(
   input: GetTranscriptInput,
 ): Promise<Session> {
   const adapter = requireAdapter(registry, input.provider);
-  const session = await adapter.readSession({
-    provider: input.provider,
-    id: input.id,
-    path: input.path,
-  });
-  return capMessages(session, input.limit ?? defaultMessageLimit);
-}
-
-function capMessages(session: Session, maxMessages: number): Session {
-  if (session.messages.length <= maxMessages) return session;
-  return {
-    ...session,
-    messages: session.messages.slice(0, maxMessages),
-    messageCount: session.messages.length,
-  };
+  const session = await adapter.readSession(
+    {
+      provider: input.provider,
+      id: input.id,
+      path: input.path,
+    },
+    {
+      messageLimit: input.limit ?? defaultMessageLimit,
+    },
+  );
+  return session;
 }

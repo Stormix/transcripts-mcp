@@ -40,6 +40,11 @@ const sessionRefSchema = z.object({
 });
 export type SessionRef = z.infer<typeof sessionRefSchema>;
 
+export interface ReadSessionOptions {
+  messageLimit?: number;
+  onMessagesRetained?: (count: number) => void;
+}
+
 const listOptionsSchema = z.object({
   provider: z.string().optional(),
   cwd: z.string().optional(),
