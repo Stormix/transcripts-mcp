@@ -8,6 +8,7 @@ import { embeddingDimensions as modelEmbeddingDimensions, modelId } from "./cons
 
 const tensorSchema = z.object({
   data: z.instanceof(Float32Array),
+  dims: z.array(z.number()),
 });
 
 const nestedVectorSchema = z.array(z.array(z.number()).min(modelEmbeddingDimensions));
@@ -15,9 +16,9 @@ const nestedVectorSchema = z.array(z.array(z.number()).min(modelEmbeddingDimensi
 const flatVectorSchema = z.array(z.number()).min(modelEmbeddingDimensions);
 
 type FeatureExtractor = (
-  text: string,
+  texts: string | string[],
   options: { pooling: "mean"; normalize: true },
-) => Promise<Float32Array | undefined>;
+) => Promise<Tensor>;
 
 let extractor: FeatureExtractor | undefined;
 let extractorFailed = false;
@@ -27,13 +28,21 @@ export function embeddingDimensions(): number {
 }
 
 export async function embedText(text: string): Promise<Float32Array | undefined> {
+  return (await embedTexts([text]))[0];
+}
+
+export async function embedTexts(
+  texts: readonly string[],
+): Promise<readonly (Float32Array | undefined)[]> {
+  if (texts.length === 0) return [];
   const model = await loadExtractor();
-  if (model === undefined) return undefined;
+  if (model === undefined) return texts.map(() => undefined);
   try {
-    return await model(text, { pooling: "mean", normalize: true });
+    const output = await model([...texts], { pooling: "mean", normalize: true });
+    return parsePipelineBatchOutput(output, texts.length);
   } catch (error) {
     console.error("semantic embed failed", error);
-    return undefined;
+    return texts.map(() => undefined);
   }
 }
 
@@ -53,10 +62,7 @@ async function loadExtractor(): Promise<FeatureExtractor | undefined> {
   if (extractor !== undefined) return extractor;
   try {
     const loaded = await pipeline("feature-extraction", modelId, { dtype: "fp32" });
-    extractor = async (text, options) => {
-      const output = await loaded(text, options);
-      return parsePipelineOutput(output);
-    };
+    extractor = (texts, options) => loaded(texts, options);
     return extractor;
   } catch (error) {
     extractorFailed = true;
@@ -76,6 +82,27 @@ function parsePipelineOutput(output: Tensor): Float32Array | undefined {
   const flat = flatVectorSchema.safeParse(output);
   if (flat.success) return firstDimensions(Float32Array.from(flat.data));
   return undefined;
+}
+
+export function parsePipelineBatchOutput(
+  output: Tensor,
+  batchSize: number,
+): readonly (Float32Array | undefined)[] {
+  const tensor = tensorSchema.safeParse(output);
+  if (
+    !tensor.success ||
+    tensor.data.dims.length !== 2 ||
+    tensor.data.dims[0] !== batchSize ||
+    tensor.data.dims[1] !== modelEmbeddingDimensions ||
+    tensor.data.data.length !== batchSize * modelEmbeddingDimensions
+  ) {
+    if (batchSize === 1) return [parsePipelineOutput(output)];
+    return Array.from({ length: batchSize }, () => undefined);
+  }
+  return Array.from({ length: batchSize }, (_, index) => {
+    const start = index * modelEmbeddingDimensions;
+    return firstDimensions(tensor.data.data.slice(start, start + modelEmbeddingDimensions));
+  });
 }
 
 function firstDimensions(values: Float32Array): Float32Array | undefined {
