@@ -11,12 +11,7 @@ import { buildIndex, TranscriptIndex, searchTranscripts } from "../fts.ts";
 import { reciprocalRankFusion, type RankedItem } from "../fusion.ts";
 import { grepTranscripts, isGrepAvailable } from "../grep.ts";
 import { scanGrep } from "../scan.ts";
-import {
-  embedCorpus,
-  ensureSemanticSchema,
-  searchVectors,
-  semanticCorpusPageSize,
-} from "../semantic.ts";
+import { embedCorpus, ensureSemanticSchema, searchVectors } from "../semantic.ts";
 import {
   appendMessage,
   checkCount,
@@ -33,6 +28,8 @@ assert.ok(root, "Missing fixture directory");
 const indexPath = join(root, "index.db");
 process.env.TRANSCRIPTS_MCP_INDEX = indexPath;
 const registry = await createCorpus(root);
+const semanticModule = await import("../semantic.ts");
+const benchmarkSemanticPageSize = semanticModule.semanticCorpusPageSize ?? 1;
 const scopes = await Promise.all(
   registry.list().map(async (adapter) => ({
     provider: adapter.id,
@@ -129,13 +126,22 @@ try {
         semanticDb.run("DELETE FROM embeddings");
         const batchSizes: number[] = [];
         let embedded = 0;
-        const complete = await embedCorpus(semanticDb, {
-          embedTexts: async (texts) => {
-            batchSizes.push(texts.length);
-            embedded += texts.length;
-            return texts.map(() => new Float32Array(384));
-          },
-        });
+        const complete = await embedCorpus(
+          semanticDb,
+          semanticModule.semanticCorpusPageSize === undefined
+            ? async () => {
+                batchSizes.push(1);
+                embedded += 1;
+                return new Float32Array(384);
+              }
+            : {
+                embedTexts: async (texts) => {
+                  batchSizes.push(texts.length);
+                  embedded += texts.length;
+                  return texts.map(() => new Float32Array(384));
+                },
+              },
+        );
         return { complete, embedded, batchSizes };
       },
       (result) => {
@@ -143,9 +149,9 @@ try {
         checkCount(result.embedded, messageCount + 1);
         checkCount(
           result.batchSizes.length,
-          Math.ceil((messageCount + 1) / semanticCorpusPageSize),
+          Math.ceil((messageCount + 1) / benchmarkSemanticPageSize),
         );
-        assert.ok(result.batchSizes.every((size) => size <= semanticCorpusPageSize));
+        assert.ok(result.batchSizes.every((size) => size <= benchmarkSemanticPageSize));
       },
     ),
   );
