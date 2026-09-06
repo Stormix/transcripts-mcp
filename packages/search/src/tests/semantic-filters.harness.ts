@@ -80,6 +80,42 @@ try {
   );
   assert.deepEqual(searchVectors(db, new Float32Array([1, 0]), query, 0, true, scopes), []);
   if (scenario === "undated") assert.equal(native[0]?.timestamp, undefined);
+
+  for (const path of ["tie-b", "tie-a", "Z", "a", "é", "😀"]) {
+    const vector = new Float32Array([1, 0]);
+    insert.run(
+      path,
+      1,
+      "target",
+      sourceRoot,
+      path,
+      "user",
+      "term",
+      "/target",
+      normalizeCwd("/target"),
+      slugifyCwd("/target"),
+      "2026-09-06T00:00:00.000Z",
+      "2026-09-06T00:00:00.000Z",
+      new Uint8Array(vector.buffer),
+    );
+  }
+  const tieNative = searchVectors(db, new Float32Array([1, 0]), { query: "term" }, 6, true, scopes);
+  const tieFallback = searchVectors(
+    db,
+    new Float32Array([1, 0]),
+    { query: "term" },
+    6,
+    false,
+    scopes,
+  );
+  assert.deepEqual(
+    tieNative.map((hit) => hit.path),
+    ["Z", "a", "tie-a", "tie-b", "é", "😀"],
+  );
+  assert.deepEqual(
+    tieFallback.map((hit) => hit.path),
+    tieNative.map((hit) => hit.path),
+  );
   console.info("FILTER_OK");
 } finally {
   db.close();
