@@ -1,12 +1,16 @@
 import {
-  installClientById,
+  agentInstallPrompt,
+  agentPromptId,
   installClients,
+  installPanelById,
   type InstallClient,
   type InstallClientId,
+  type InstallPanelId,
   type SnippetKind,
 } from "@/lib/install";
 import { packageName } from "@/lib/site";
-import { Braces, Check, ChevronRight, Terminal } from "lucide-react";
+import { cn } from "cn";
+import { Braces, Check, ChevronRight, Copy, Sparkles, Terminal } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Container } from "./container";
@@ -15,9 +19,9 @@ import { InstallClientIcon } from "./install-client-icon";
 import { Button } from "./ui/button";
 
 export function Install() {
-  const [selected, setSelected] = useState<InstallClientId>("cursor");
-  const [copiedId, setCopiedId] = useState<InstallClientId | null>(null);
-  const active = installClientById(selected);
+  const [selected, setSelected] = useState<InstallPanelId>("cursor");
+  const [copiedId, setCopiedId] = useState<InstallPanelId | null>(null);
+  const active = installPanelById(selected);
 
   return (
     <section id="configure" className="bg-ink-sunken">
@@ -27,9 +31,20 @@ export function Install() {
             Find your next answer in an old session.
           </h2>
           <p className="max-w-[460px] font-body text-base leading-relaxed text-soft">
-            Choose your client to install or copy its configuration.
+            Hand the setup to your agent, or choose your client and copy its configuration.
           </p>
-          <div className="flex flex-col pt-4">
+          <AgentPromptCard
+            active={selected === agentPromptId}
+            copied={copiedId === agentPromptId}
+            onSelect={setSelected}
+            onCopied={setCopiedId}
+          />
+          <div className="flex items-center gap-4 pt-1">
+            <span className="h-px flex-1 bg-line-soft" />
+            <span className="font-body text-[12.5px] text-faint">or set it up yourself</span>
+            <span className="h-px flex-1 bg-line-soft" />
+          </div>
+          <div className="flex flex-col">
             {installClients
               .filter((client) => client.action !== "remote-note")
               .map((client) => (
@@ -48,17 +63,16 @@ export function Install() {
         <div className="flex min-w-0 flex-1 flex-col gap-5 lg:sticky lg:top-8 lg:self-start">
           <div className="overflow-hidden rounded-xl bg-ink">
             <div className="flex items-center gap-2.5 px-4 py-3">
-              {active.snippetKind === "cli" ? (
-                <Terminal className="size-[14px] text-faint" />
-              ) : (
-                <Braces className="size-[14px] text-faint" />
-              )}
+              <SnippetIcon kind={active.snippetKind} />
               <span className="flex-1 truncate font-mono text-xs text-soft">{active.path}</span>
               <CopyButton value={active.copyValue} />
             </div>
             <pre
               key={selected}
-              className="config-snippet overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]"
+              className={cn(
+                "config-snippet overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]",
+                active.snippetKind === "prompt" && "max-h-[460px] overflow-y-auto",
+              )}
             >
               <Snippet kind={active.snippetKind} value={active.copyValue} />
             </pre>
@@ -66,6 +80,52 @@ export function Install() {
         </div>
       </Container>
     </section>
+  );
+}
+
+function AgentPromptCard({
+  active,
+  copied,
+  onSelect,
+  onCopied,
+}: {
+  active: boolean;
+  copied: boolean;
+  onSelect: (id: InstallPanelId) => void;
+  onCopied: (id: InstallPanelId | null) => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="bare"
+      size="auto"
+      onClick={() => {
+        onSelect(agentPromptId);
+        void copyText(agentInstallPrompt, agentPromptId, onCopied);
+      }}
+      className={cn(
+        "group flex w-full cursor-pointer items-center gap-3.5 rounded-xl border px-4 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-sunken",
+        active
+          ? "border-coral/60 bg-coral/10"
+          : "border-line bg-coral/[0.04] hover:border-coral/40 hover:bg-coral/10",
+      )}
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-coral/15 text-coral">
+        <Sparkles className="size-[17px]" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-body text-[15px] font-medium text-paper">
+          Let your agent install it
+        </span>
+        <span className="font-body text-[12.5px] text-faint">
+          One prompt, no config file to edit yourself.
+        </span>
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-2 rounded-md bg-coral px-3 py-2 font-body text-[13px] font-semibold text-ink transition-colors group-hover:bg-paper">
+        {copied ? <Check className="size-[14px]" /> : <Copy className="size-[14px]" />}
+        {copied ? "Copied" : "Copy prompt"}
+      </span>
+    </Button>
   );
 }
 
@@ -77,10 +137,10 @@ function ClientRow({
   onCopied,
 }: {
   client: InstallClient;
-  selected: InstallClientId;
+  selected: InstallPanelId;
   copied: boolean;
   onSelect: (id: InstallClientId) => void;
-  onCopied: (id: InstallClientId | null) => void;
+  onCopied: (id: InstallPanelId | null) => void;
 }) {
   const isActive = client.id === selected;
   const className =
@@ -144,8 +204,8 @@ function ClientRow({
 
 async function copyText(
   value: string,
-  id: InstallClientId,
-  onCopied: (id: InstallClientId | null) => void,
+  id: InstallPanelId,
+  onCopied: (id: InstallPanelId | null) => void,
 ) {
   try {
     await navigator.clipboard.writeText(value);
@@ -155,6 +215,23 @@ async function copyText(
     }, 1600);
   } catch {
     onCopied(null);
+  }
+}
+
+function SnippetIcon({ kind }: { kind: SnippetKind }) {
+  switch (kind) {
+    case "cli":
+      return <Terminal className="size-[14px] text-faint" />;
+    case "prompt":
+      return <Sparkles className="size-[14px] text-coral" />;
+    case "json":
+    case "toml":
+    case "note":
+      return <Braces className="size-[14px] text-faint" />;
+    default: {
+      const exhaustive: never = kind;
+      return exhaustive;
+    }
   }
 }
 
@@ -172,11 +249,34 @@ function Snippet({ kind, value }: { kind: SnippetKind; value: string }) {
       );
     case "note":
       return <code className="text-soft whitespace-pre-wrap">{value}</code>;
+    case "prompt":
+      return <PromptSnippet value={value} />;
     default: {
       const exhaustive: never = kind;
       return exhaustive;
     }
   }
+}
+
+const stepLinePattern = /^\d+\./;
+
+function PromptSnippet({ value }: { value: string }) {
+  return (
+    <code className="block whitespace-pre-wrap">
+      {value.split("\n").map((line, index) => (
+        <span
+          key={`${String(index)}-${line}`}
+          className={cn(
+            "block",
+            stepLinePattern.test(line) ? "text-paper" : "text-soft",
+            line.length === 0 && "h-[0.85em]",
+          )}
+        >
+          {line}
+        </span>
+      ))}
+    </code>
+  );
 }
 
 function JsonSnippet() {
