@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 
-import type { SearchHit, SearchQuery } from "./types.ts";
+import type { SearchHit, SearchQuery, SearchScope } from "./types.ts";
 
 import { z } from "zod";
 
@@ -18,6 +18,7 @@ const embeddingRowSchema = z.object({
   path: z.string(),
   line_number: z.number(),
   provider: z.string(),
+  source_root: z.string(),
   session_id: z.string(),
   role: z.string(),
   text: z.string(),
@@ -33,6 +34,7 @@ const pendingRowSchema = z.object({
   path: z.string(),
   line_number: z.number(),
   provider: z.string(),
+  source_root: z.string(),
   session_id: z.string(),
   role: z.string(),
   text: z.string(),
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
   path TEXT NOT NULL,
   line_number INTEGER NOT NULL,
   provider TEXT NOT NULL,
+  source_root TEXT NOT NULL,
   session_id TEXT NOT NULL,
   role TEXT NOT NULL,
   text TEXT NOT NULL,
@@ -106,14 +109,15 @@ export function searchVectors(
   query: SearchQuery,
   limit: number,
   useSqliteVec: boolean,
+  scopes: SearchScope[],
 ): SearchHit[] {
-  if (limit < 1) return [];
+  if (limit < 1 || scopes.length === 0) return [];
   const normalizedQuery = normalizeSearchQueryDates(query);
   if (useSqliteVec) {
-    const vecHits = searchWithSqliteVec(db, queryVector, normalizedQuery, limit);
+    const vecHits = searchWithSqliteVec(db, queryVector, normalizedQuery, limit, scopes);
     if (vecHits !== undefined) return vecHits;
   }
-  return searchWithCosine(db, queryVector, normalizedQuery, limit);
+  return searchWithCosine(db, queryVector, normalizedQuery, limit, scopes);
 }
 
 export function fuseHits(
@@ -153,7 +157,7 @@ export async function embedCorpus(db: Database, embedText?: EmbedText): Promise<
 
   const pending = db
     .query(
-      `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp
+      `SELECT path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp
        FROM messages_fts
        WHERE NOT EXISTS (
          SELECT 1 FROM embeddings
@@ -164,8 +168,8 @@ export async function embedCorpus(db: Database, embedText?: EmbedText): Promise<
     .all();
 
   const insert = db.prepare(
-    `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO embeddings (path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   for (const row of pending) {
@@ -190,6 +194,7 @@ export async function embedCorpus(db: Database, embedText?: EmbedText): Promise<
         parsed.data.path,
         parsed.data.line_number,
         parsed.data.provider,
+        parsed.data.source_root,
         parsed.data.session_id,
         parsed.data.role,
         parsed.data.text,
@@ -233,6 +238,7 @@ function corpusIsComplete(db: Database): boolean {
        LEFT JOIN embeddings USING (path, line_number)
        WHERE embeddings.path IS NULL
           OR embeddings.provider != messages_fts.provider
+          OR embeddings.source_root != messages_fts.source_root
           OR embeddings.session_id != messages_fts.session_id
           OR embeddings.role != messages_fts.role
           OR embeddings.text != messages_fts.text
@@ -265,12 +271,13 @@ function searchWithCosine(
   queryVector: Float32Array,
   query: SearchQuery,
   limit: number,
+  scopes: SearchScope[],
 ): SearchHit[] {
   const scored: SearchHit[] = [];
   for (const row of db.query("SELECT * FROM embeddings").all()) {
     const parsed = embeddingRowSchema.safeParse(row);
     if (!parsed.success) continue;
-    if (!matchesFilters(parsed.data, query)) continue;
+    if (!matchesFilters(parsed.data, query, scopes)) continue;
     scored.push(
       toHit(parsed.data, cosineSimilarity(queryVector, float32FromBytes(parsed.data.vector))),
     );
@@ -284,21 +291,29 @@ function searchWithSqliteVec(
   queryVector: Float32Array,
   query: SearchQuery,
   limit: number,
+  scopes: SearchScope[],
 ): SearchHit[] | undefined {
   try {
+    const scopeParams: string[] = [];
+    const scopeFilter = scopes.map(() => "(provider = ? AND source_root = ?)").join(" OR ");
+    for (const scope of scopes) scopeParams.push(scope.provider, scope.root);
     const rows = db
       .query(
-        `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector,
+        `SELECT path, line_number, provider, source_root, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector,
                 vec_distance_cosine(vector, ?) AS distance
          FROM embeddings
+         WHERE ${scopeFilter}
          ORDER BY distance`,
       )
-      .iterate(new Uint8Array(queryVector.buffer, queryVector.byteOffset, queryVector.byteLength));
+      .iterate(
+        new Uint8Array(queryVector.buffer, queryVector.byteOffset, queryVector.byteLength),
+        ...scopeParams,
+      );
     const hits: SearchHit[] = [];
     for (const row of rows) {
       const parsed = embeddingRowSchema.extend({ distance: z.number() }).safeParse(row);
       if (!parsed.success) continue;
-      if (!matchesFilters(parsed.data, query)) continue;
+      if (!matchesFilters(parsed.data, query, scopes)) continue;
       hits.push(toHit(parsed.data, 1 - parsed.data.distance));
       if (hits.length >= limit) break;
     }
@@ -312,6 +327,7 @@ function searchWithSqliteVec(
 function matchesFilters(
   row: {
     provider: string;
+    source_root: string;
     role: string;
     cwd: string | null;
     cwd_norm: string | null;
@@ -319,7 +335,11 @@ function matchesFilters(
     effective_timestamp: string;
   },
   query: SearchQuery,
+  scopes: SearchScope[],
 ): boolean {
+  if (!scopes.some((scope) => scope.provider === row.provider && scope.root === row.source_root)) {
+    return false;
+  }
   if (query.provider !== undefined && row.provider !== query.provider) return false;
   if (query.role !== undefined && row.role !== query.role) return false;
   if (
