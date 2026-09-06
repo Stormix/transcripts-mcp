@@ -22,6 +22,7 @@ export function Install() {
   const [selected, setSelected] = useState<InstallPanelId>("cursor");
   const [copiedId, setCopiedId] = useState<InstallPanelId | null>(null);
   const active = installPanelById(selected);
+  const isPrompt = active.snippetKind === "prompt";
 
   return (
     <section id="configure" className="bg-ink-sunken">
@@ -70,14 +71,19 @@ export function Install() {
             <pre
               key={selected}
               data-lenis-prevent
+              tabIndex={isPrompt ? 0 : undefined}
+              role={isPrompt ? "region" : undefined}
+              aria-label={isPrompt ? active.path : undefined}
               className={cn(
-                "config-snippet overflow-x-auto px-4 pt-1 pb-[18px] font-mono text-[12.5px] leading-[1.7]",
-                active.snippetKind === "prompt" && "max-h-[420px] overflow-y-auto lg:max-h-[560px]",
+                "config-snippet overflow-x-auto px-4 pt-1 font-mono text-[12.5px] leading-[1.7]",
+                isPrompt
+                  ? "max-h-[420px] overflow-y-auto pb-14 focus-visible:inset-ring-2 focus-visible:inset-ring-coral/50 focus-visible:outline-none lg:max-h-[560px]"
+                  : "pb-[18px]",
               )}
             >
               <Snippet kind={active.snippetKind} value={active.copyValue} />
             </pre>
-            {active.snippetKind === "prompt" ? (
+            {isPrompt ? (
               <span
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-ink to-transparent"
