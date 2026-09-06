@@ -33,10 +33,10 @@
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "husky": "^9.1.7",
-    "lint-staged": "^17.3.0",
+    "lint-staged": "^17.4.1",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "turbo": "^2.10.9",
+    "turbo": "^2.10.12",
     "typescript": "catalog:",
     "vitest": "^5.0.0",
     "zod": "catalog:"
