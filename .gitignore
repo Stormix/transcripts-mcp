@@ -12,3 +12,6 @@ coverage
 .wrangler
 .dev.vars*
 .design/exports/preview/*
+
+bench-results/
+packages/search/src/.bench-*/
