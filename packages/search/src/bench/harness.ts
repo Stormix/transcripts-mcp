@@ -4,6 +4,7 @@ import { cpus } from "node:os";
 import { join } from "node:path";
 
 import * as sqliteVec from "sqlite-vec";
+import { z } from "zod";
 
 import { buildIndex, TranscriptIndex, searchTranscripts } from "../fts.ts";
 import { reciprocalRankFusion, type RankedItem } from "../fusion.ts";
@@ -136,8 +137,16 @@ try {
   } catch {
     vectorAvailable = false;
   }
+  const embeddingColumns = z
+    .array(z.object({ name: z.string() }))
+    .parse(db.query("PRAGMA table_info(embeddings)").all());
+  const hasEffectiveTimestamp = embeddingColumns.some(
+    (column) => column.name === "effective_timestamp",
+  );
   const insert = db.prepare(
-    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,vector) VALUES (?,1,?,?,'user','target',?)",
+    hasEffectiveTimestamp
+      ? "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,effective_timestamp,vector) VALUES (?,1,?,?,'user','target','2026-09-06T00:00:00.000Z',?)"
+      : "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,vector) VALUES (?,1,?,?,'user','target',?)",
   );
   db.transaction(() => {
     for (let row = 0; row < messageCount; row += 1) {

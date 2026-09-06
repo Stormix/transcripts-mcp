@@ -15,7 +15,13 @@ const queries = {
   cwd: { query: "term", cwd: "/target" },
   slug: { query: "term", cwd: "/target" },
   since: { query: "term", since: "2026-09-01T00:00:00Z" },
+  offset: { query: "term", since: "2026-09-01T02:00:00+02:00" },
   until: { query: "term", until: "2026-09-10T00:00:00Z" },
+  undated: {
+    query: "term",
+    since: "2026-09-01T00:00:00Z",
+    until: "2026-09-10T00:00:00Z",
+  },
   combined: {
     query: "term",
     provider: "target",
@@ -33,7 +39,7 @@ try {
   ensureSemanticSchema(db);
   sqliteVec.load(db);
   const insert = db.prepare(
-    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,cwd,cwd_norm,project_slug,timestamp,vector) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,cwd,cwd_norm,project_slug,timestamp,effective_timestamp,vector) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
   );
   for (let index = 0; index < 6; index += 1) {
     const target = index >= 4;
@@ -49,11 +55,12 @@ try {
       scenario === "slug" ? null : cwd,
       scenario === "slug" ? null : normalizeCwd(cwd),
       slugifyCwd(cwd),
+      scenario === "undated" ? null : "2026-09-06T00:00:00.000Z",
       target
-        ? "2026-09-06T00:00:00Z"
+        ? "2026-09-06T00:00:00.000Z"
         : scenario === "until"
-          ? "2026-10-01T00:00:00Z"
-          : "2026-08-01T00:00:00Z",
+          ? "2026-10-01T00:00:00.000Z"
+          : "2026-08-01T00:00:00.000Z",
       new Uint8Array(vector.buffer),
     );
   }
@@ -68,6 +75,7 @@ try {
     fallback.map((hit) => hit.path),
   );
   assert.deepEqual(searchVectors(db, new Float32Array([1, 0]), query, 0, true), []);
+  if (scenario === "undated") assert.equal(native[0]?.timestamp, undefined);
   console.info("FILTER_OK");
 } finally {
   db.close();

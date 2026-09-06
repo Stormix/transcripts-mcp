@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -20,10 +20,12 @@ const indexDir = await mkdtemp(join(tmpdir(), "transcripts-index-"));
 process.env.TRANSCRIPTS_MCP_INDEX = join(indexDir, "index.db");
 
 try {
-  await writeSession(root, "alpha", [
+  const alphaPath = await writeSession(root, "alpha", [
     messageLine("user", "unique-fts-term zebra about indexing"),
     messageLine("assistant", "acknowledged"),
   ]);
+  const alphaMtime = new Date("2026-09-06T00:00:00.000Z");
+  await utimes(alphaPath, alphaMtime, alphaMtime);
   await writeSession(root, "beta", [
     messageLine("user", "unrelated conversation about weather"),
     messageLine("assistant", "the sky is blue"),
@@ -80,6 +82,38 @@ try {
     mode: "fts",
     role: "assistant",
   });
+  const offsetDateHits = await searchTranscripts(registry, {
+    query: "unique-fts-term",
+    mode: "fts",
+    since: "2026-09-01T02:00:00+02:00",
+    until: "2026-09-10T02:00:00+02:00",
+  });
+  const utcDateHits = await searchTranscripts(registry, {
+    query: "unique-fts-term",
+    mode: "fts",
+    since: "2026-09-01T00:00:00.000Z",
+    until: "2026-09-10T00:00:00.000Z",
+  });
+  const sinceHits = await searchTranscripts(registry, {
+    query: "unique-fts-term",
+    mode: "fts",
+    since: "2026-09-01T00:00:00.000Z",
+  });
+  const untilHits = await searchTranscripts(registry, {
+    query: "unique-fts-term",
+    mode: "fts",
+    until: "2026-09-10T00:00:00.000Z",
+  });
+  const excludedByMtime = await searchTranscripts(registry, {
+    query: "unique-fts-term",
+    mode: "fts",
+    since: "2026-09-07T00:00:00.000Z",
+  });
+  const excludedByUntil = await searchTranscripts(registry, {
+    query: "unique-fts-term",
+    mode: "fts",
+    until: "2026-09-05T00:00:00.000Z",
+  });
 
   if (cwdHits.length !== 1 || cwdHits[0]?.sessionId !== "cwd-sess") {
     throw new Error(`cwd filter missed: ${cwdHits.map((hit) => hit.sessionId).join(",")}`);
@@ -90,6 +124,19 @@ try {
   if (roleUserHits.length !== 1 || roleAssistantHits.length !== 0) {
     throw new Error(
       `role filter missed: user=${roleUserHits.length} assistant=${roleAssistantHits.length}`,
+    );
+  }
+  if (
+    offsetDateHits.length !== 1 ||
+    utcDateHits.length !== 1 ||
+    sinceHits.length !== 1 ||
+    untilHits.length !== 1 ||
+    excludedByMtime.length !== 0 ||
+    excludedByUntil.length !== 0 ||
+    offsetDateHits[0]?.timestamp !== undefined
+  ) {
+    throw new Error(
+      `date filter mismatch: offset=${offsetDateHits.length} utc=${utcDateHits.length} since=${sinceHits.length} until=${untilHits.length} excludedSince=${excludedByMtime.length} excludedUntil=${excludedByUntil.length}`,
     );
   }
 
@@ -104,6 +151,13 @@ try {
       slashCwdHits: slashCwdHits.length,
       slugHits: slugHits.length,
       roleUserHits: roleUserHits.length,
+      offsetDateHits: offsetDateHits.length,
+      utcDateHits: utcDateHits.length,
+      sinceHits: sinceHits.length,
+      untilHits: untilHits.length,
+      excludedByMtime: excludedByMtime.length,
+      excludedByUntil: excludedByUntil.length,
+      authoredTimestamp: offsetDateHits[0]?.timestamp ?? null,
     })}`,
   );
 } finally {

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("semantic filters", () => {
-  it.each(["provider", "role", "cwd", "slug", "since", "until", "combined"])(
+  it.each(["provider", "role", "cwd", "slug", "since", "offset", "until", "undated", "combined"])(
     "should return the nearest matching result when closer vectors fail the %s filter",
     (scenario) => {
       const result = spawnSync(

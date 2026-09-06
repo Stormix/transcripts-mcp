@@ -33,8 +33,8 @@ try {
   const seed = new Database(dbPath);
   try {
     seed.run(
-      `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, timestamp, vector)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, timestamp, effective_timestamp, vector)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         join(root, "sessions", "alpha.jsonl"),
         1,
@@ -44,6 +44,7 @@ try {
         "unique-fts-term zebra about indexing",
         null,
         null,
+        "2026-09-06T00:00:00.000Z",
         new Uint8Array(16),
       ],
     );

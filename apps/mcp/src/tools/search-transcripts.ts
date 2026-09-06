@@ -1,10 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 
 import type { AdapterRegistry } from "@transcripts-mcp/core";
+import type { SearchQuery } from "@transcripts-mcp/search";
 
 import * as z from "zod/v4";
 
-import { searchTranscripts as runSearch } from "@transcripts-mcp/search";
+import { normalizeSearchQueryDates, searchTranscripts as runSearch } from "@transcripts-mcp/search";
 
 import { runTool } from "../utils.ts";
 
@@ -19,7 +20,7 @@ const searchTranscriptsInputSchema = z.object({
   limit: z.number().int().positive().max(100).optional(),
 });
 
-type SearchTranscriptsInput = z.infer<typeof searchTranscriptsInputSchema>;
+export type SearchTranscriptsInput = z.infer<typeof searchTranscriptsInputSchema>;
 
 export function registerSearchTranscripts(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
@@ -33,8 +34,12 @@ export function registerSearchTranscripts(server: McpServer, registry: AdapterRe
   );
 }
 
-async function searchTranscripts(registry: AdapterRegistry, input: SearchTranscriptsInput) {
-  return runSearch(registry, {
+export async function searchTranscripts(registry: AdapterRegistry, input: SearchTranscriptsInput) {
+  return runSearch(registry, toSearchQuery(input));
+}
+
+export function toSearchQuery(input: SearchTranscriptsInput): SearchQuery {
+  return normalizeSearchQueryDates({
     query: input.query,
     mode: input.mode ?? "fts",
     provider: input.provider,

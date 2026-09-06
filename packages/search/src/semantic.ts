@@ -7,6 +7,7 @@ import { z } from "zod";
 import { matchesCwdFilter } from "@transcripts-mcp/core";
 
 import { reciprocalRankFusion } from "./fusion.ts";
+import { normalizeSearchQueryDates } from "./utils.ts";
 
 const embeddingRowSchema = z.object({
   path: z.string(),
@@ -19,6 +20,7 @@ const embeddingRowSchema = z.object({
   cwd_norm: z.string().nullable(),
   project_slug: z.string().nullable(),
   timestamp: z.string().nullable(),
+  effective_timestamp: z.string(),
   vector: z.instanceof(Uint8Array),
 });
 
@@ -33,6 +35,7 @@ const pendingRowSchema = z.object({
   cwd_norm: z.string().nullable(),
   project_slug: z.string().nullable(),
   timestamp: z.string().nullable(),
+  effective_timestamp: z.string(),
 });
 
 const vectorTable = `
@@ -47,6 +50,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
   cwd_norm TEXT,
   project_slug TEXT,
   timestamp TEXT,
+  effective_timestamp TEXT NOT NULL,
   vector BLOB NOT NULL,
   PRIMARY KEY (path, line_number)
 );
@@ -93,11 +97,12 @@ export function searchVectors(
   useSqliteVec: boolean,
 ): SearchHit[] {
   if (limit < 1) return [];
+  const normalizedQuery = normalizeSearchQueryDates(query);
   if (useSqliteVec) {
-    const vecHits = searchWithSqliteVec(db, queryVector, query, limit);
+    const vecHits = searchWithSqliteVec(db, queryVector, normalizedQuery, limit);
     if (vecHits !== undefined) return vecHits;
   }
-  return searchWithCosine(db, queryVector, query, limit);
+  return searchWithCosine(db, queryVector, normalizedQuery, limit);
 }
 
 export function fuseHits(
@@ -129,7 +134,7 @@ export async function embedCorpus(db: Database): Promise<boolean> {
 
   const pending = db
     .query(
-      `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp
+      `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp
        FROM messages_fts
        WHERE NOT EXISTS (
          SELECT 1 FROM embeddings
@@ -140,8 +145,8 @@ export async function embedCorpus(db: Database): Promise<boolean> {
     .all();
 
   const insert = db.prepare(
-    `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, vector)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO embeddings (path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   for (const row of pending) {
@@ -160,6 +165,7 @@ export async function embedCorpus(db: Database): Promise<boolean> {
       parsed.data.cwd_norm,
       parsed.data.project_slug,
       parsed.data.timestamp,
+      parsed.data.effective_timestamp,
       new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength),
     );
   }
@@ -208,7 +214,7 @@ function searchWithSqliteVec(
   try {
     const rows = db
       .query(
-        `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, vector,
+        `SELECT path, line_number, provider, session_id, role, text, cwd, cwd_norm, project_slug, timestamp, effective_timestamp, vector,
                 vec_distance_cosine(vector, ?) AS distance
          FROM embeddings
          ORDER BY distance`,
@@ -236,7 +242,7 @@ function matchesFilters(
     cwd: string | null;
     cwd_norm: string | null;
     project_slug: string | null;
-    timestamp: string | null;
+    effective_timestamp: string;
   },
   query: SearchQuery,
 ): boolean {
@@ -252,11 +258,8 @@ function matchesFilters(
   ) {
     return false;
   }
-  if (row.timestamp === null) return true;
-  const stamp = Date.parse(row.timestamp);
-  if (Number.isNaN(stamp)) return true;
-  if (query.since !== undefined && stamp < Date.parse(query.since)) return false;
-  if (query.until !== undefined && stamp > Date.parse(query.until)) return false;
+  if (query.since !== undefined && row.effective_timestamp < query.since) return false;
+  if (query.until !== undefined && row.effective_timestamp > query.until) return false;
   return true;
 }
 
