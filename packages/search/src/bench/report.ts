@@ -130,7 +130,7 @@ export function renderReport(comparison: Comparison): string {
     "",
     `Runtime: Bun ${clean(environment.bun)}, ${clean(environment.platform)} ${clean(environment.arch)}, ${clean(environment.cpu)}. Same runner, serial execution, alternating revision order. Suite: \`${comparison.suiteHash.slice(0, 12)}\`.`,
     "",
-    "Fixtures: 32 sessions × 128 messages (~2 MiB), 4,096 vectors × 384 dimensions plus a 16,384-vector selective-filter case. Native cold includes finder initialization; filesystem caches are not flushed. Vector retrieval excludes model loading and embedding generation.",
+    "Fixtures: 32 sessions × 128 messages (~2 MiB), unchanged incremental-index proxies at 8/128/2,048 one-message sessions, 4,096 vectors × 384 dimensions, and a 16,384-vector selective-filter case. Native cold includes finder initialization; filesystem caches are not flushed. Vector retrieval excludes model loading and embedding generation.",
     "Vector retrieval remains exact: SQL predicates reduce the distance input set and LIMIT bounds materialized results, but scalar distance still scans every filtered vector. Approximate vec0/ANN retrieval is deferred pending separate maintainer approval.",
     "",
     "<details>",

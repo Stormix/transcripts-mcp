@@ -44,6 +44,30 @@ export async function createCorpus(root: string) {
   ]);
 }
 
+export async function createMetadataCorpus(root: string, files: number) {
+  await mkdir(join(root, "sessions"), { recursive: true });
+  const line = `${JSON.stringify({
+    role: "user",
+    cwd: "/bench/project",
+    text: "freshness metadata fixture",
+  })}\n`;
+  for (let session = 0; session < files; session += 1) {
+    await writeFile(join(root, "sessions", `${session}.jsonl`), line);
+  }
+  return createRegistry([
+    defineJsonlAdapter({
+      id: "freshness-benchmark",
+      displayName: "Freshness benchmark fixture",
+      root: () => root,
+      sessionFiles: "sessions/*.jsonl",
+      sessionIdFromPath: (path) => basename(path, ".jsonl"),
+      lineSchema,
+      toMessage: (entry) => ({ role: entry.role, text: entry.text }),
+      cwdFromLine: (entry) => entry.cwd,
+    }),
+  ]);
+}
+
 export async function appendMessage(root: string): Promise<void> {
   await appendFile(
     join(root, "sessions", "0.jsonl"),
