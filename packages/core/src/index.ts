@@ -2,6 +2,6 @@ export type { ListOptions, Message, Role, Session, SessionSummary } from "./type
 export type { TranscriptAdapter } from "./adapter";
 export { defineJsonlAdapter } from "./adapter";
 export { AdapterRegistry, createRegistry } from "./registry";
-export { walkGlob } from "./glob";
+export { globMatches, walkGlob } from "./glob";
 export { readJsonlLines, readJsonlLinesAt } from "./jsonl";
 export { matchesCwdFilter, normalizeCwd, slugifyCwd } from "./paths";

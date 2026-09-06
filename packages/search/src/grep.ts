@@ -1,11 +1,13 @@
 import type { FileFinder, GrepCursor } from "@ff-labs/fff-bun";
 
-import type { AdapterRegistry } from "@transcripts-mcp/core";
+import type { AdapterRegistry, TranscriptAdapter } from "@transcripts-mcp/core";
 
 import type { CandidateHit, GrepHit, GrepQuery } from "./types.ts";
 
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+
+import { globMatches } from "@transcripts-mcp/core";
 
 import { candidateWindow, defaultHitLimit, maxFileSizeBytes, scanTimeoutMs } from "./constants.ts";
 import { normalizeCandidates } from "./normalize.ts";
@@ -66,6 +68,7 @@ async function* streamNativeCandidates(
       });
       if (!result.ok) break;
       for (const item of result.value.items) {
+        if (!isAdapterSessionFile(adapter, item.relativePath)) continue;
         yield {
           path: join(root, item.relativePath),
           lineNumber: item.lineNumber,
@@ -76,6 +79,13 @@ async function* streamNativeCandidates(
       cursor = result.value.nextCursor;
     }
   }
+}
+
+export function isAdapterSessionFile(
+  adapter: TranscriptAdapter,
+  finderRelativePath: string,
+): boolean {
+  return globMatches(finderRelativePath, adapter.sessionFiles);
 }
 
 function finderFor(
