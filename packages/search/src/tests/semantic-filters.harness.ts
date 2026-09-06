@@ -35,20 +35,24 @@ const scenario = process.argv[2] ?? "";
 const query = Object.entries(queries).find(([name]) => name === scenario)?.[1];
 assert.ok(query, "expected a filter scenario");
 const db = new Database(":memory:");
+const sourceRoot = "fixture-root";
+const scopes = [{ provider: "target", root: sourceRoot }];
 try {
   ensureSemanticSchema(db);
   sqliteVec.load(db);
   const insert = db.prepare(
-    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,cwd,cwd_norm,project_slug,timestamp,effective_timestamp,vector) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+    "INSERT INTO embeddings (path,line_number,provider,source_root,session_id,role,text,cwd,cwd_norm,project_slug,timestamp,effective_timestamp,vector) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
   );
   for (let index = 0; index < 6; index += 1) {
     const target = index >= 4;
+    const provider = index === 0 || target ? "target" : "other";
     const vector = new Float32Array(target ? [0.8, 0.2 + index / 100] : [1, 0]);
     const cwd = target ? "/target" : "/other";
     insert.run(
       String(index),
       1,
-      target ? "target" : "other",
+      provider,
+      target ? sourceRoot : "stale-root",
       String(index),
       target ? "user" : "assistant",
       "term",
@@ -64,8 +68,8 @@ try {
       new Uint8Array(vector.buffer),
     );
   }
-  const native = searchVectors(db, new Float32Array([1, 0]), query, 1, true);
-  const fallback = searchVectors(db, new Float32Array([1, 0]), query, 1, false);
+  const native = searchVectors(db, new Float32Array([1, 0]), query, 1, true, scopes);
+  const fallback = searchVectors(db, new Float32Array([1, 0]), query, 1, false, scopes);
   assert.deepEqual(
     native.map((hit) => hit.path),
     ["4"],
@@ -74,7 +78,7 @@ try {
     native.map((hit) => hit.path),
     fallback.map((hit) => hit.path),
   );
-  assert.deepEqual(searchVectors(db, new Float32Array([1, 0]), query, 0, true), []);
+  assert.deepEqual(searchVectors(db, new Float32Array([1, 0]), query, 0, true, scopes), []);
   if (scenario === "undated") assert.equal(native[0]?.timestamp, undefined);
   console.info("FILTER_OK");
 } finally {

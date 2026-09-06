@@ -10,6 +10,7 @@ const lifecycleSchema = z.object({
   empty: z.boolean(),
   partial: z.boolean(),
   fallback: z.boolean(),
+  staleFallback: z.boolean(),
   invalid: z.boolean(),
   thrown: z.boolean(),
   insertionFailure: z.boolean(),
@@ -81,6 +82,7 @@ describe("semantic lifecycle", () => {
 
   it("should return FTS results when the semantic state is incomplete", () => {
     expect(lifecycle().fallback).toBe(true);
+    expect(lifecycle().staleFallback).toBe(true);
   });
 
   it("should become complete when semantic construction retries successfully", () => {

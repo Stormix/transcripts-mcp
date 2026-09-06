@@ -9,7 +9,7 @@ export async function resolveTranscriptFile(
   root: string,
   sessionFiles: string,
 ): Promise<string> {
-  const canonicalRoot = await realpath(root);
+  const canonicalRoot = await resolveTranscriptRoot(root);
   const canonicalPath = await realpath(filePath);
   if (!isPathInside(canonicalPath, canonicalRoot)) {
     throw new Error(`Session path is outside adapter root: ${filePath}`);
@@ -22,6 +22,10 @@ export async function resolveTranscriptFile(
     throw new Error(`Session path does not match adapter session files: ${filePath}`);
   }
   return canonicalPath;
+}
+
+export async function resolveTranscriptRoot(root: string): Promise<string> {
+  return realpath(root);
 }
 
 export function isPathInside(filePath: string, root: string): boolean {

@@ -36,6 +36,11 @@ export interface SearchHit {
   score: number;
 }
 
+export interface SearchScope {
+  provider: string;
+  root: string;
+}
+
 export interface SearchQuery {
   query: string;
   provider?: string;
