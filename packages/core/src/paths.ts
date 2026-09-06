@@ -1,5 +1,28 @@
+import { realpath, stat } from "node:fs/promises";
 import { platform } from "node:os";
 import { isAbsolute, normalize, relative, resolve, sep } from "node:path";
+
+import { globMatches } from "./glob";
+
+export async function resolveTranscriptFile(
+  filePath: string,
+  root: string,
+  sessionFiles: string,
+): Promise<string> {
+  const canonicalRoot = await realpath(root);
+  const canonicalPath = await realpath(filePath);
+  if (!isPathInside(canonicalPath, canonicalRoot)) {
+    throw new Error(`Session path is outside adapter root: ${filePath}`);
+  }
+  const fileStats = await stat(canonicalPath);
+  if (!fileStats.isFile()) {
+    throw new Error(`Session path is not a file: ${filePath}`);
+  }
+  if (!globMatches(relative(canonicalRoot, canonicalPath), sessionFiles)) {
+    throw new Error(`Session path does not match adapter session files: ${filePath}`);
+  }
+  return canonicalPath;
+}
 
 export function isPathInside(filePath: string, root: string): boolean {
   const absoluteFile = resolve(filePath);
