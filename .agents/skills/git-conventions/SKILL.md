@@ -37,24 +37,28 @@ The type must be one of the following:
 
 ### Scope
 
-The scope should be the name of the package or area affected. For this monorepo:
+Infer scope from staged file paths. Use the workspace **directory name**, not the npm package name (`packages/cli` is `cli`, not `transcripts-mcp`). Scope is optional; omit it or use `repo` for repo-wide work. Multiple scopes are allowed when each is a valid workspace or meta scope (`feat(mcp,search):`).
 
 **Apps:**
 
-- `api` - Backend API service
-- `bot` - Discord bot
-- `desktop` - Desktop application
-- `lockdex` - Lockdex service
-- `www` - Web application
-- `mirror-service` - Mirror service
+- `mcp` - stdio MCP server
+- `www` - Marketing site
 
 **Packages:**
 
-- `common` - Common utilities
-- `database` - Database schema and client
-- `logging` - Logging package
-- `shared` - Shared utilities
-- `vpk-parser` - VPK parser
+- `core` - Types, adapter contract, jsonl reader
+- `adapters` - Cursor, Claude Code, and Codex adapters
+- `search` - Grep, FTS5, semantic search
+- `cli` - Published CLI package
+
+**Tools:**
+
+- `oxlint-plugins` - Custom oxlint rules
+- `typescript-config` - Shared TypeScript config
+
+**Distribution:**
+
+- `plugin` - Cursor plugin manifest and skill
 
 **Other:**
 
@@ -92,10 +96,10 @@ The footer should contain information about Breaking Changes and reference issue
 ### Feature Addition
 
 ```text
-feat(desktop): add mod conflict detection
+feat(search): add hybrid fusion ranking
 
-Implement visual indicators for mod conflicts and add conflict
-resolution suggestions to the UI.
+Blend FTS5 and semantic hits so keyword and meaning both
+influence the result order.
 
 Closes #142
 ```
@@ -103,40 +107,43 @@ Closes #142
 ### Bug Fix
 
 ```text
-fix(api): handle edge case in pagination
+fix(mcp): restore session id on grep hits
 
-Fix incorrect offset calculation when page size exceeds total items.
-This prevents API errors when requesting pages beyond available data.
+Resolve the session id from the adapter path so grep results
+can open the matching transcript.
 ```
 
 ### Breaking Change
 
 ```text
-feat(api)!: remove deprecated v1 endpoints
+feat(adapters)!: drop deprecated parse helpers
 
-BREAKING CHANGE: The /v1/mods endpoint has been removed. All clients
-must migrate to the /v2/mods endpoint which provides better filtering
-and pagination support.
-
-Migration guide available at docs/migration/v1-to-v2.md
+BREAKING CHANGE: Adapter parse helpers were removed. New harness
+adapters must use defineJsonlAdapter.
 ```
 
 ### Dependency Update
 
 ```text
-chore(deps): update @tauri-apps/api to v2.1.0
+chore(deps): update zod to v4.4.3
 ```
 
 ### Documentation
 
 ```text
-docs(readme): add installation instructions for Linux
+docs(repo): add installation instructions for Linux
 ```
 
-### Multiple Scopes
+### Repo-wide or no scope
 
 ```text
-refactor(desktop,shared): extract mod validation logic to shared package
+ci: run commitlint on pull request commits
+```
+
+### Multiple scopes
+
+```text
+refactor(mcp,search): extract fusion ranking
 ```
 
 ### Simple Fix

@@ -22,10 +22,13 @@
     "start": "pnpm --filter @transcripts-mcp/mcp start",
     "deploy:www": "pnpm --filter @transcripts-mcp/www run deploy",
     "build:cli": "bun scripts/build-cli.ts",
-    "sync:plugin-version": "bun scripts/sync-plugin-version.ts"
+    "sync:plugin-version": "bun scripts/sync-plugin-version.ts",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "@transcripts-mcp/oxlint-plugins": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
