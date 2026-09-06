@@ -59,7 +59,7 @@ jobs:
         if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
         with:
           package-json-file: trusted/package.json
-          runtime: node@24
+          runtime: node@26.8.1
           install: false
       - uses: oven-sh/setup-bun@v2
         if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'

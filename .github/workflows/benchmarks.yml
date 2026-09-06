@@ -32,7 +32,7 @@ jobs:
       - uses: pnpm/setup@v2
         with:
           package-json-file: pr/package.json
-          runtime: node@24
+          runtime: node@26.8.1
           install: false
       - uses: oven-sh/setup-bun@v2
         with:

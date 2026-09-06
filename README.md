@@ -179,7 +179,7 @@ Indexed search stores message text and, when enabled, embeddings in the local SQ
 
 ## From source
 
-Requires [Bun](https://bun.sh) >= 1.2, [Node.js](https://nodejs.org) >= 26.8.1, and [pnpm](https://pnpm.io) 12.
+Requires [Bun](https://bun.sh) >= 1.4.0, [Node.js](https://nodejs.org) >= 26.8.1, and [pnpm](https://pnpm.io) 12.3.3. Exact development and CI pins live in `.tool-versions`.
 
 ```bash
 git clone https://github.com/Stormix/transcripts-mcp.git
