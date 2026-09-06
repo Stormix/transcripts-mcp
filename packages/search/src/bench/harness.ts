@@ -137,7 +137,7 @@ try {
     vectorAvailable = false;
   }
   const insert = db.prepare(
-    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,vector) VALUES (?,1,?,?,'user','target',?)",
+    "INSERT INTO embeddings (path,line_number,provider,session_id,role,text,effective_timestamp,vector) VALUES (?,1,?,?,'user','target','2026-09-06T00:00:00.000Z',?)",
   );
   db.transaction(() => {
     for (let row = 0; row < messageCount; row += 1) {

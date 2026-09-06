@@ -22,6 +22,7 @@ import {
   loadSqliteVec,
   searchVectors,
 } from "./semantic.ts";
+import { normalizeSearchQueryDates } from "./utils.ts";
 
 const schema = `
 PRAGMA journal_mode = WAL;
@@ -46,6 +47,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
   path UNINDEXED,
   line_number UNINDEXED,
   timestamp UNINDEXED,
+  effective_timestamp UNINDEXED,
   tokenize = 'porter'
 );
 `;
@@ -154,23 +156,29 @@ export class TranscriptIndex {
   }
 
   search(query: SearchQuery): SearchHit[] {
-    return this.#searchFts(query, query.limit ?? 20);
+    const normalizedQuery = normalizeSearchQueryDates(query);
+    return this.#searchFts(normalizedQuery, normalizedQuery.limit ?? 20);
   }
 
   async searchHybrid(query: SearchQuery): Promise<SearchHit[]> {
-    const limit = query.limit ?? 20;
-    const ftsHits = this.#searchFts(query, limit);
+    const normalizedQuery = normalizeSearchQueryDates(query);
+    const limit = normalizedQuery.limit ?? 20;
+    const ftsHits = this.#searchFts(normalizedQuery, limit);
     if (!this.semanticAvailable()) {
       logHybridFallback("no embeddings in index");
       return ftsHits;
     }
-    const embedding = await embedQuery(query.query);
+    const embedding = await embedQuery(normalizedQuery.query);
     if (embedding === undefined) {
       logHybridFallback("embed query failed");
       return ftsHits;
     }
     const useSqliteVec = await this.#ensureSqliteVec();
-    return fuseHits(ftsHits, searchVectors(this.#db, embedding, query, limit, useSqliteVec), limit);
+    return fuseHits(
+      ftsHits,
+      searchVectors(this.#db, embedding, normalizedQuery, limit, useSqliteVec),
+      limit,
+    );
   }
 
   async #ensureSqliteVec(): Promise<boolean> {
@@ -195,11 +203,11 @@ export class TranscriptIndex {
       params.push(normalizeCwd(query.cwd), slugifyCwd(query.cwd));
     }
     if (query.since !== undefined) {
-      filters.push("(timestamp IS NULL OR timestamp >= ?)");
+      filters.push("effective_timestamp >= ?");
       params.push(query.since);
     }
     if (query.until !== undefined) {
-      filters.push("(timestamp IS NULL OR timestamp <= ?)");
+      filters.push("effective_timestamp <= ?");
       params.push(query.until);
     }
     params.push(limit);
@@ -244,6 +252,7 @@ export class TranscriptIndex {
       role: string;
       lineNumber: number;
       timestamp: string | null;
+      effectiveTimestamp: string;
     }> = [];
     let lineNumber = 0;
     for await (const text of readJsonlLines(path)) {
@@ -257,13 +266,14 @@ export class TranscriptIndex {
         role: message.role,
         lineNumber,
         timestamp: message.timestamp?.toISOString() ?? null,
+        effectiveTimestamp: message.timestamp?.toISOString() ?? new Date(mtimeMs).toISOString(),
       });
     }
     const cwdNorm = cwd === undefined ? null : normalizeCwd(cwd);
     const slug = projectSlug ?? null;
     const insert = this.#db.prepare(
-      `INSERT INTO messages_fts (text, provider, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages_fts (text, provider, role, cwd, cwd_norm, project_slug, session_id, path, line_number, timestamp, effective_timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     this.#db.transaction(() => {
       this.#deleteFile(path);
@@ -279,6 +289,7 @@ export class TranscriptIndex {
           path,
           row.lineNumber,
           row.timestamp,
+          row.effectiveTimestamp,
         );
       }
       this.#db

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -25,6 +26,16 @@ afterEach(async () => {
 });
 
 describe("createServer", () => {
+  it("should return tool errors when indexed search dates are invalid", () => {
+    const result = spawnSync(
+      "bun",
+      ["--bun", join(import.meta.dirname, "search-date-validation.harness.ts")],
+      { encoding: "utf8" },
+    );
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(result.stdout).toContain("SEARCH_DATE_VALIDATION_OK");
+  });
+
   it("should expose the six transcript tools when the server is wired", () => {
     const registry = createRegistry();
     const server = new McpServer({ name: "transcripts-mcp", version: "0.0.0" });

@@ -14,6 +14,13 @@ const ftsResultSchema = z.object({
   slashCwdHits: z.number(),
   slugHits: z.number(),
   roleUserHits: z.number(),
+  offsetDateHits: z.number(),
+  utcDateHits: z.number(),
+  sinceHits: z.number(),
+  untilHits: z.number(),
+  excludedByMtime: z.number(),
+  excludedByUntil: z.number(),
+  authoredTimestamp: z.string().nullable(),
 });
 
 describe("fts", () => {
@@ -38,6 +45,13 @@ describe("fts", () => {
     expect(parsed.data.cwdHits).toBe(1);
     expect(parsed.data.slugHits).toBe(1);
     expect(parsed.data.roleUserHits).toBe(1);
+    expect(parsed.data.offsetDateHits).toBe(1);
+    expect(parsed.data.utcDateHits).toBe(1);
+    expect(parsed.data.sinceHits).toBe(1);
+    expect(parsed.data.untilHits).toBe(1);
+    expect(parsed.data.excludedByMtime).toBe(0);
+    expect(parsed.data.excludedByUntil).toBe(0);
+    expect(parsed.data.authoredTimestamp).toBeNull();
     if (process.platform === "win32") {
       expect(parsed.data.slashCwdHits).toBe(1);
     }
