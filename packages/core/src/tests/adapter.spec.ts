@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -77,6 +77,93 @@ describe("defineJsonlAdapter", () => {
       { role: "user", text: "keep this" },
       { role: "assistant", text: "still keep this" },
     ]);
+  });
+
+  it("should reject an explicit path when the file is outside the session glob", async () => {
+    const root = await createTempDir();
+    const sessionDirectory = join(root, "sessions");
+    await mkdir(sessionDirectory);
+    const sessionPath = join(root, "outside-glob.jsonl");
+    await writeFile(
+      sessionPath,
+      `${JSON.stringify({ type: "msg", text: "secret", role: "user" })}\n`,
+    );
+    const adapter = createTestAdapter(root, "sessions/*.jsonl");
+
+    await expect(
+      adapter.readSession({ provider: "test", id: "outside-glob", path: sessionPath }),
+    ).rejects.toThrow("Session path does not match adapter session files");
+  });
+
+  it("should reject an explicit path when the session id does not match", async () => {
+    const root = await createTempDir();
+    const sessionPath = join(root, "actual.jsonl");
+    await writeFile(
+      sessionPath,
+      `${JSON.stringify({ type: "msg", text: "hello", role: "user" })}\n`,
+    );
+    const adapter = createTestAdapter(root);
+
+    await expect(
+      adapter.readSession({ provider: "test", id: "different", path: sessionPath }),
+    ).rejects.toThrow("Session id does not match session path");
+  });
+
+  it("should read a session when the explicit path is valid", async () => {
+    const root = await createTempDir();
+    const sessionPath = join(root, "explicit.jsonl");
+    await writeFile(
+      sessionPath,
+      `${JSON.stringify({ type: "msg", text: "hello", role: "user" })}\n`,
+    );
+    const adapter = createTestAdapter(root);
+
+    const session = await adapter.readSession({
+      provider: "test",
+      id: "explicit",
+      path: sessionPath,
+    });
+
+    expect(session.path).toBe(await realpath(sessionPath));
+    expect(session.messages.map((message) => message.text)).toEqual(["hello"]);
+  });
+
+  it("should reject an explicit path when the target is a directory", async () => {
+    const root = await createTempDir();
+    const directoryPath = join(root, "directory.jsonl");
+    await mkdir(directoryPath);
+    const adapter = createTestAdapter(root);
+
+    await expect(
+      adapter.readSession({ provider: "test", id: "directory", path: directoryPath }),
+    ).rejects.toThrow("Session path is not a file");
+  });
+
+  it("should reject an explicit path when an in-root symlink targets outside", async ({ skip }) => {
+    const root = await createTempDir();
+    const outsideRoot = await createTempDir();
+    const outsidePath = join(outsideRoot, "escaped.jsonl");
+    const linkPath = join(root, "escaped.jsonl");
+    await writeFile(
+      outsidePath,
+      `${JSON.stringify({ type: "msg", text: "secret", role: "user" })}\n`,
+    );
+    const symlinkError = await symlink(outsidePath, linkPath, "file").then(
+      () => undefined,
+      (error: NodeJS.ErrnoException) => error,
+    );
+    if (symlinkError !== undefined) {
+      if (symlinkError.code === "EPERM" || symlinkError.code === "EACCES") {
+        skip();
+        return;
+      }
+      throw symlinkError;
+    }
+    const adapter = createTestAdapter(root);
+
+    await expect(
+      adapter.readSession({ provider: "test", id: "escaped", path: linkPath }),
+    ).rejects.toThrow("Session path is outside adapter root");
   });
 
   it("should list sessions newest-first without reading entire files", async () => {

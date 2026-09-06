@@ -3,7 +3,6 @@ import type { ZodType } from "zod";
 import type { ListOptions, Message, Session, SessionRef, SessionSummary } from "./types";
 
 import { stat } from "node:fs/promises";
-import { resolve } from "node:path";
 
 import { walkGlob } from "./glob";
 import {
@@ -13,7 +12,7 @@ import {
   readLastJsonlLine,
   type ParseJsonLineResult,
 } from "./jsonl";
-import { isPathInside, matchesCwdFilter } from "./paths";
+import { matchesCwdFilter, resolveTranscriptFile } from "./paths";
 
 export interface TranscriptAdapter {
   readonly id: string;
@@ -304,10 +303,11 @@ async function resolveSessionPath<TLine>(
     throw new Error(`Adapter ${spec.id} cannot read provider ${ref.provider}`);
   }
   if (ref.path !== undefined) {
-    if (!isPathInside(ref.path, spec.root())) {
-      throw new Error(`Session path is outside adapter root: ${ref.path}`);
+    const canonicalPath = await resolveTranscriptFile(ref.path, spec.root(), spec.sessionFiles);
+    if (spec.sessionIdFromPath(canonicalPath) !== ref.id) {
+      throw new Error(`Session id does not match session path: ${ref.provider}/${ref.id}`);
     }
-    return resolve(ref.path);
+    return canonicalPath;
   }
 
   const root = spec.root();
