@@ -14,6 +14,7 @@
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
     "@transcripts-mcp/adapters": "workspace:*",
+    "@transcripts-mcp/contracts": "workspace:*",
     "@transcripts-mcp/core": "workspace:*",
     "@transcripts-mcp/search": "workspace:*",
     "zod": "catalog:"

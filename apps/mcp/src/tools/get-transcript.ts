@@ -4,24 +4,30 @@ import type { AdapterRegistry, Session } from "@transcripts-mcp/core";
 
 import * as z from "zod/v4";
 
-import { defaultMessageLimit } from "../constants.ts";
+import { toolContracts } from "@transcripts-mcp/contracts";
+
 import { requireAdapter, runTool } from "../utils.ts";
 
+const contract = toolContracts.getTranscript;
 const getTranscriptInputSchema = z.object({
   provider: z.string(),
   id: z.string(),
   path: z.string().optional(),
-  limit: z.number().int().positive().max(1000).optional(),
+  limit: z
+    .number()
+    .int()
+    .min(contract.inputs.limit.minimum)
+    .max(contract.inputs.limit.maximum)
+    .default(contract.inputs.limit.default),
 });
 
-export type GetTranscriptInput = z.infer<typeof getTranscriptInputSchema>;
+export type GetTranscriptInput = z.input<typeof getTranscriptInputSchema>;
 
 export function registerGetTranscript(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
-    "get_transcript",
+    contract.name,
     {
-      description:
-        "Return the normalized transcript for one session (provider + id, optional path). Messages are capped (default 200, max 1000).",
+      description: contract.description,
       inputSchema: getTranscriptInputSchema,
     },
     async (input) => runTool(() => getTranscript(registry, input)),
@@ -40,7 +46,7 @@ export async function getTranscript(
       path: input.path,
     },
     {
-      messageLimit: input.limit ?? defaultMessageLimit,
+      messageLimit: input.limit ?? contract.inputs.limit.default,
     },
   );
   return session;

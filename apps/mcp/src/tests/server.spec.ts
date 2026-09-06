@@ -7,10 +7,10 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { toolNames } from "@transcripts-mcp/contracts";
 import { createRegistry, defineJsonlAdapter } from "@transcripts-mcp/core";
 import { grepTranscripts } from "@transcripts-mcp/search/grep";
 
-import { toolNames } from "../constants.ts";
 import { getTranscript } from "../tools/get-transcript.ts";
 import { listProviders } from "../tools/list-providers.ts";
 import { listSessions, registerListSessions } from "../tools/list-sessions.ts";

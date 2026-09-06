@@ -2,19 +2,20 @@ import type { McpServer } from "@modelcontextprotocol/server";
 
 import * as z from "zod/v4";
 
+import { toolContracts } from "@transcripts-mcp/contracts";
 import { walkGlob, type AdapterRegistry, type TranscriptAdapter } from "@transcripts-mcp/core";
 
 import { sessionCountCap } from "../constants.ts";
 import { runTool } from "../utils.ts";
 
 const listProvidersInputSchema = z.object({});
+const contract = toolContracts.listProviders;
 
 export function registerListProviders(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
-    "list_providers",
+    contract.name,
     {
-      description:
-        "List transcript harnesses on this machine. Returns availability and a capped session file count.",
+      description: contract.description,
       inputSchema: listProvidersInputSchema,
     },
     async () => runTool(() => listProviders(registry)),

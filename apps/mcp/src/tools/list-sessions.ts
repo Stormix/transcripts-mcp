@@ -4,25 +4,31 @@ import type { AdapterRegistry, ListOptions, SessionSummary } from "@transcripts-
 
 import * as z from "zod/v4";
 
-import { defaultSessionLimit } from "../constants.ts";
+import { toolContracts } from "@transcripts-mcp/contracts";
+
 import { adaptersFor, parseIso, runTool } from "../utils.ts";
 
+const contract = toolContracts.listSessions;
 const listSessionsInputSchema = z.object({
   provider: z.string().optional(),
   cwd: z.string().optional(),
   since: z.string().optional(),
   until: z.string().optional(),
-  limit: z.number().int().positive().max(200).optional(),
+  limit: z
+    .number()
+    .int()
+    .min(contract.inputs.limit.minimum)
+    .max(contract.inputs.limit.maximum)
+    .default(contract.inputs.limit.default),
 });
 
-export type ListSessionsInput = z.infer<typeof listSessionsInputSchema>;
+export type ListSessionsInput = z.input<typeof listSessionsInputSchema>;
 
 export function registerListSessions(server: McpServer, registry: AdapterRegistry): void {
   server.registerTool(
-    "list_sessions",
+    contract.name,
     {
-      description:
-        "List session summaries filtered by provider, cwd, and time range. Newest first. Does not return full transcripts.",
+      description: contract.description,
       inputSchema: listSessionsInputSchema,
     },
     async (input) => runTool(() => listSessions(registry, input)),
@@ -37,7 +43,7 @@ export async function listSessions(
     throw new Error(`Unknown provider: ${input.provider}`);
   }
 
-  const limit = input.limit ?? defaultSessionLimit;
+  const limit = input.limit ?? contract.inputs.limit.default;
   const opts = toListOptions(input, limit);
   const sessions: SessionSummary[] = [];
 

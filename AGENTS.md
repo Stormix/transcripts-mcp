@@ -18,6 +18,7 @@ Key directories:
 - `apps/mcp` — stdio MCP server, tool registration, adapter wiring
 - `apps/www` — marketing site (Vite + React), deployed with wrangler
 - `packages/core` — types, adapter contract, jsonl reader, registry
+- `packages/contracts` — serializable MCP tool metadata shared by runtime and docs
 - `packages/adapters` — Cursor, Claude Code, and Codex harness adapters
 - `packages/search` — grep (fff), FTS5, optional semantic search
 - `tools/typescript-config` — shared tsconfig

@@ -9,14 +9,18 @@ Query sessions already on disk. Nothing is uploaded. Six tools, three intended s
 
 ## Tools
 
-| Tool                 | Role                                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| `list_providers`     | Which harnesses are on this machine, with availability and a capped session file count           |
-| `list_sessions`      | Session summaries, newest first. Filter by provider, cwd, since, until. Does not return messages |
-| `get_transcript`     | Normalized messages for one session                                                              |
-| `grep_transcripts`   | Immediate scan of raw JSONL. No index                                                            |
-| `search_transcripts` | Ranked search over the FTS5 index                                                                |
-| `build_index`        | Build or refresh that index                                                                      |
+<!-- tool-contract:start -->
+
+| Tool                 | Purpose                                                                                                                                                                   | Inputs                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `list_providers`     | List transcript harnesses on this machine. Returns availability and a capped session file count.                                                                          | —                                                                                                                     |
+| `list_sessions`      | List session summaries filtered by provider, cwd, and time range. Newest first. Does not return full transcripts.                                                         | provider? · cwd? · since? · until? · limit? (1–200, default 50)                                                       |
+| `get_transcript`     | Return the normalized transcript for one session (provider + id, optional path). Messages are capped (default 200, max 1000).                                             | **provider** · **id** · path? · limit? (1–1000, default 200)                                                          |
+| `grep_transcripts`   | Search raw transcript files without an index. Supports plain, regex, and fuzzy matching with 10 MiB file, 1 MiB line, 64 MiB scan, and 60 second fallback limits.         | **query** (max 1024 chars) · mode? (plain/regex/fuzzy, default fuzzy) · provider? · limit? (1–200, default 50)        |
+| `search_transcripts` | BM25-ranked search over normalized messages. mode=fts (default) or mode=hybrid after a semantic index build.                                                              | **query** · mode? (fts/hybrid, default fts) · provider? · role? · cwd? · since? · until? · limit? (1–100, default 20) |
+| `build_index`        | Build or refresh the FTS5 index. Pass full=true to rebuild from scratch. Pass semantic=true to also embed the corpus — first run downloads ~23MB ONNX (all-MiniLM-L6-v2). | full? (default false) · semantic? (default false)                                                                     |
+
+<!-- tool-contract:end -->
 
 Provider ids: `cursor`, `claude-code`, `codex`.
 
