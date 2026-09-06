@@ -21,3 +21,4 @@ packages/search/src/.bench-*/
 .tanstack/
 .deepsec/data/transcripts-mcp/*
 findings/*
+.cursor/plans/*
