@@ -12,7 +12,7 @@
     "check-types": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.2.0",
     "@transcripts-mcp/adapters": "workspace:*",
     "@transcripts-mcp/contracts": "workspace:*",
     "@transcripts-mcp/core": "workspace:*",
