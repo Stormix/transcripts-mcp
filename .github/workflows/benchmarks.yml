@@ -29,7 +29,7 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           path: base
           persist-credentials: false
-      - uses: pnpm/setup@v2
+      - uses: pnpm/setup@v3
         with:
           package-json-file: pr/package.json
           runtime: node@26.8.1
