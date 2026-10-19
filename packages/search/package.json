@@ -14,8 +14,8 @@
     "test": "vitest run --config ../../vitest.config.mts"
   },
   "dependencies": {
-    "@ff-labs/fff-bun": "^0.10.6",
-    "@huggingface/transformers": "^4.2.0",
+    "@ff-labs/fff-bun": "^0.11.0",
+    "@huggingface/transformers": "^4.3.1",
     "@transcripts-mcp/contracts": "workspace:*",
     "@transcripts-mcp/core": "workspace:*",
     "sqlite-vec": "^0.1.9",
