@@ -55,7 +55,7 @@ jobs:
           path: results
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: pnpm/setup@v2
+      - uses: pnpm/setup@v3
         if: steps.pr.outputs.number != '' && steps.pr.outputs.artifact == 'true'
         with:
           package-json-file: trusted/package.json
